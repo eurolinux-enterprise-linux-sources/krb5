@@ -29,7 +29,7 @@
 Summary: The Kerberos network authentication system
 Name: krb5
 Version: 1.10.3
-Release: 37%{?dist}
+Release: 42%{?dist}
 # Maybe we should explode from the now-available-to-everybody tarball instead?
 # http://web.mit.edu/kerberos/dist/krb5/1.10/krb5-1.10.3-signed.tar
 Source0: krb5-%{version}.tar.gz
@@ -107,9 +107,15 @@ Patch131: krb5-CVE-2013-1418.patch
 Patch132: krb5-gssapi-spnego-deref.patch
 Patch133: krb5-gssapi-mech-doublefree.patch
 Patch134: http://web.mit.edu/kerberos/advisories/2014-001-patch.txt
-Patch135: krb5_cve_2014_9421_2014_9422_2014_9423_2014_5352_krb5-1.10.7-final.patch 
-Patch136: krb5-CVE_2014_5353_fix_LDAP_misused_policy_name_crash.patch
-Patch137: krb5-1.12.1-CVE_2014_5355_fix_krb5_read_message_handling.patch
+Patch135: krb5-1.10-localauth_backport.patch
+Patch136: krb5_cve_2014_9421_2014_9422_2014_9423_2014_5352_krb5-1.10.7-final.patch
+# was: krb5-1.13-krbdev7996_simplify_and_improve_ksu_cred_verification.patch
+Patch138: krb5-1.12.2-krb5-getclhoststr-backport.patch
+Patch139: krb5-1.13-krbdev7868_use_preauth_options_when_changing_password.patch
+Patch140: krb5-1.13-krbdev7868_use_preauth_options_when_changing_password_tests.patch
+Patch141: krb5-1.12.1-CVE_2014_5355_fix_krb5_read_message_handling.patch
+Patch142: krb5-CVE_2014_5353_fix_LDAP_misused_policy_name_crash.patch
+Patch143: krb5-1.13_remove_stray_include_in_localauth_plugin_h.patch
 Source101: http://web.mit.edu/kerberos/advisories/2014-001-patch.txt.asc
 
 License: MIT
@@ -117,9 +123,7 @@ URL: http://web.mit.edu/kerberos/www/
 Group: System Environment/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: autoconf, bison, flex, gawk, gettext
-%if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
 BuildRequires: libcom_err-devel, libss-devel
-%endif
 BuildRequires: gzip, ncurses-devel, texinfo, texinfo-tex, tar
 BuildRequires: texlive-latex
 BuildRequires: keyutils-libs-devel
@@ -157,9 +161,7 @@ practice of sending passwords over the network in unencrypted form.
 Summary: Development files needed to compile Kerberos 5 programs
 Group: Development/Libraries
 Requires: %{name}-libs = %{version}-%{release}
-%if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
 Requires: libcom_err-devel
-%endif
 Requires: keyutils-libs-devel, libselinux-devel
 
 %description devel
@@ -332,9 +334,14 @@ ln -s NOTICE LICENSE
 %patch132 -p1 -b .gssapi-spnego-deref
 %patch133 -p1 -b .gssapi-mech-doublefree
 %patch134 -p1 -b .2014-001
-%patch135 -p1 -b .krb5_cve_2014_9421_2014_9422_2014_9423_2014_5352_krb5-1.10.7-final
-%patch136 -p1 -b .krb5-cve_2014_5353_fix_ldap_misused_policy_name_crash
-%patch137 -p1 -b .krb5-1.12.1-cve_2014_5355_fix_krb5_read_message_handling
+%patch135 -p1 -b .krb5-1.10-localauth_backport
+%patch136 -p1 -b .krb5_cve_2014_9421_2014_9422_2014_9423_2014_5352_krb5-1.10.7-final
+%patch138 -p1 -b .krb5-1.12.2-krb5-getclhoststr-backport
+%patch139 -p1 -b .krb5-1.13-krbdev7868_use_preauth_options_when_changing_password
+%patch140 -p1 -b .krb5-1.13-krbdev7868_use_preauth_options_when_changing_password_tests
+%patch141 -p1 -b .krb5-1.12.1-cve_2014_5355_fix_krb5_read_message_handling
+%patch142 -p1 -b .krb5-cve_2014_5353_fix_ldap_misused_policy_name_crash
+%patch143 -p1 -b .krb5-1.13_remove_stray_include_in_localauth_plugin_h
 
 rm src/lib/krb5/krb/deltat.c
 
@@ -440,12 +447,41 @@ CPPFLAGS="`echo $DEFINES $INCLUDES`"
 make
 popd
 
+
+#
 # A sanity checker for upgrades.
-env LD_LIBRARY_PATH=`pwd`/src/lib \
+#
+env LD_LIBRARY_PATH="$(pwd)/src/lib" \
 %{__cc} -o kdb_check_weak \
 	-I src/include `./src/krb5-config --cflags kdb` \
 	%{SOURCE35} \
 	-L src/lib `./src/krb5-config --libs kdb`
+
+#
+# testcase for LocalAuth plugin
+# RHEL6(.6) doesn't provide /usr/include/com_err.h for now
+# (see bug #1197176 and users have to use
+# /usr/include/et/com_err.h instead
+#
+cat >'krb_localauth_test001.c' << EOF
+
+	#include "krb5/krb5.h"
+	#include "krb5/localauth_plugin.h"
+	int main(int ac, char *av[]) { return 0; }
+
+EOF
+# log where com_err.h comes from - see
+# https://bugzilla.redhat.com/show_bug.cgi?id=1197176 ("libcom_err-devel
+# in RHEL6.7 does not provide /usr/include/com_err.h")
+(set -o xtrace ; find . /usr/include -name 'com_err.h' -ls)
+env LD_LIBRARY_PATH="$(pwd)/src/lib" \
+%{__cc} -o 'krb_localauth_test001' \
+	-I src/include `./src/krb5-config --cflags kdb` \
+	'krb_localauth_test001.c' \
+	-I /usr/include/et \
+	-L src/lib `./src/krb5-config --libs kdb`
+rm -f krb_localauth_test001*
+
 
 %check
 # Run the test suite.  Just parts that we can actually run in the build system.
@@ -454,6 +490,7 @@ make -C src fake-install
 pushd src/tests/gssapi
 env LD_LIBRARY_PATH=`pwd`/../../lib ./t_invalid
 popd
+
 
 %install
 [ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
@@ -905,24 +942,66 @@ exit 0
 
 
 %changelog
-* Wed Apr 1 2015 Roland Mainz <rmainz@redhat.com> - 1.10.3-37
-- fix for CVE-2014-5355 (#1193939) "krb5: unauthenticated
-  denial of service in recvauth_common() and others"
+* Fri Apr 10 2015 Roland Mainz <rmainz@redhat.com> - 1.10.3-42
+- fix for RH bug #1210704 ("Remove stray include in krb5's
+  localauth_plugin.h"). This unnecessary #include statement
+  was causing build failures on some systems by making libkrb5
+  sources depend on gssapi.h (and as result to libcom_err,
+  too).
 
-* Mon Mar 30 2015 Roland Mainz <rmainz@redhat.com> - 1.10.3-36
+* Thu Mar 26 2015 Roland Mainz <rmainz@redhat.com> - 1.10.3-41
 - fix for CVE-2014-5353 (#1174543) "Fix LDAP misused policy
   name crash"
 
-* Sat Feb 7 2015 Roland Mainz <rmainz@redhat.com> - 1.10.3-35
-- Changelog fixes to make errata subsystem happy.
+* Fri Mar 20 2015 Roland Mainz <rmainz@redhat.com> - 1.10.3-40
+- fix for CVE-2014-5355 (#1193939) "krb5: unauthenticated
+  denial of service in recvauth_common() and others"
 
-* Wed Feb 4 2015 Roland Mainz <rmainz@redhat.com> - 1.10.3-34
+* Mon Mar 16 2015 - Roland Mainz <rmainz@redhat.com> - 1.10.3-39
+- Backout patch #137 for krbdev #7996 ("Simplify and improve
+  ksu cred verification" - see 1.10.3-36) for now until we
+  figure out how to get this working.
+
+* Wed Mar 4 2015 Roland Mainz <rmainz@redhat.com> - 1.10.3-38
+- Backported krbdev #7868 ("Use preauth options when changing
+  password") from krb-1.13 to fix RH bug #1075656 ("krb5
+  client ignores FAST settings for changepw requests"):
+  If we try to change the password in
+  |rb5_get_init_creds_password()|, we must use all
+  application-specified gic options which affect
+  preauthentication when getting the kadmin/changepw ticket.
+  Create a helper function |make_chpw_options()| which copies
+  the application's options, unsets the options we don't want,
+  and sets options appropriate for a temporary ticket.
+
+* Wed Mar 4 2015 Roland Mainz <rmainz@redhat.com> - 1.10.3-37
+- Backported krb5-1.12.2 changes for |getclhoststr()|
+  to fix RH bug #1154130 ("kadmind (Error): iprop_full_resync_1:
+  getclhoststr failed").
+
+* Wed Mar 4 2015 Roland Mainz <rmainz@redhat.com> - 1.10.3-36
+- Backported krbdev #7996 ("Simplify and improve ksu cred
+  verification"; cherry-picked from upstream
+  bbfe19f03bdeca7b05b542dbae4c1692c9800c70) to fix RH bug
+  #1118653 ("ksu fails authentication if TGT lifetime is
+  less than 5 mins"): When verifying the user's initial
+  credentials, don't compute a server name and preemptively
+  obtain creds for it. This change allows
+  |krb5_verify_init_creds()| to use any host key in the
+  keytab, and not just the one for the canonicalized local
+  hostname.
+
+* Wed Mar 4 2015 Roland Mainz <rmainz@redhat.com> - 1.10.3-35
 - fix for CVE-2014-5352 (#1179856) "gss_process_context_token()
   incorrectly frees context (MITKRB5-SA-2015-001)"
 - fix for CVE-2014-9421 (#1179857) "kadmind doubly frees partial
   deserialization results (MITKRB5-SA-2015-001)"
 - fix for CVE-2014-9422 (#1179861) "kadmind incorrectly
   validates server principal name (MITKRB5-SA-2015-001)"
+
+* Thu Feb 26 2015 Roland Mainz <roland.mainz@nrubsig.org> 1.10.3-34
+- Backport of krb1.12 localauth plugin support
+  See krb5-1.10-localauth_backport.patch for porting comments.
 
 * Wed Aug  6 2014 Nalin Dahyabhai <nalin@redhat.com> 1.10.3-33
 - actually apply that last patch
