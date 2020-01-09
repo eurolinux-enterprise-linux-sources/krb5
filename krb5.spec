@@ -29,7 +29,7 @@
 Summary: The Kerberos network authentication system
 Name: krb5
 Version: 1.10.3
-Release: 42%{?dist}
+Release: 42z1%{?dist}
 # Maybe we should explode from the now-available-to-everybody tarball instead?
 # http://web.mit.edu/kerberos/dist/krb5/1.10/krb5-1.10.3-signed.tar
 Source0: krb5-%{version}.tar.gz
@@ -117,6 +117,8 @@ Patch141: krb5-1.12.1-CVE_2014_5355_fix_krb5_read_message_handling.patch
 Patch142: krb5-CVE_2014_5353_fix_LDAP_misused_policy_name_crash.patch
 Patch143: krb5-1.13_remove_stray_include_in_localauth_plugin_h.patch
 Source101: http://web.mit.edu/kerberos/advisories/2014-001-patch.txt.asc
+Patch144: krb5-CVE-2015-8629.patch
+Patch145: krb5-CVE-2015-8631.patch
 
 License: MIT
 URL: http://web.mit.edu/kerberos/www/
@@ -342,6 +344,8 @@ ln -s NOTICE LICENSE
 %patch141 -p1 -b .krb5-1.12.1-cve_2014_5355_fix_krb5_read_message_handling
 %patch142 -p1 -b .krb5-cve_2014_5353_fix_ldap_misused_policy_name_crash
 %patch143 -p1 -b .krb5-1.13_remove_stray_include_in_localauth_plugin_h
+%patch144 -p1 -b .CVE-2015-8629
+%patch145 -p1 -b .CVE-2015-8631
 
 rm src/lib/krb5/krb/deltat.c
 
@@ -698,14 +702,6 @@ exit 0
 /bin/systemctl try-restart kprop.service >/dev/null 2>&1 || :
 %endif
 
-%triggerun server -- krb5-server < 1.6.3-100
-if [ "$2" -eq "0" ] ; then
-	/sbin/install-info --delete %{_infodir}/krb425.info.gz %{_infodir}/dir
-	/sbin/service krb524 stop > /dev/null 2>&1 || :
-	/sbin/chkconfig --del krb524 > /dev/null 2>&1 || :
-fi
-exit 0
-
 %post workstation
 /sbin/install-info %{_infodir}/krb5-user.info.gz %{_infodir}/dir
 exit 0
@@ -942,6 +938,11 @@ exit 0
 
 
 %changelog
+* Fri Feb 12 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-42z1
+- Fix CVE-2015-8629 and CVE-2015-8631
+- Also fix a spec trigger issue that prevents building
+- Resolves: #1306973
+
 * Fri Apr 10 2015 Roland Mainz <rmainz@redhat.com> - 1.10.3-42
 - fix for RH bug #1210704 ("Remove stray include in krb5's
   localauth_plugin.h"). This unnecessary #include statement
