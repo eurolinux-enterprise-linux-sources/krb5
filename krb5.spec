@@ -29,7 +29,7 @@
 Summary: The Kerberos network authentication system
 Name: krb5
 Version: 1.10.3
-Release: 57%{?dist}
+Release: 65%{?dist}
 # Maybe we should explode from the now-available-to-everybody tarball instead?
 # http://web.mit.edu/kerberos/dist/krb5/1.10/krb5-1.10.3-signed.tar
 Source0: krb5-%{version}.tar.gz
@@ -120,9 +120,6 @@ Source101: http://web.mit.edu/kerberos/advisories/2014-001-patch.txt.asc
 Patch144: krb5-kdc_max_dgram_reply_size.patch
 Patch145: krb5-1.14-localauth_memory_leak.patch
 Patch146: krb5-pam_krb5_nodelete.patch
-Patch147: krb5-kprop_iprop_realm.patch
-Patch148: krb5-kprop_iprop_full_port.patch
-Patch149: krb5-kadmin_kdb5_util_explicit_realm.patch
 Patch150: krb5-1.15-kadm5_acl_newline_EOF.patch
 Patch151: krb5-1.13.2-LDAP_policy_display_big_endian.patch
 Patch152: krb5-1.12.z-asc_error_token_tests.patch
@@ -130,6 +127,25 @@ Patch153: krb5-1.12.z-asc_error_token_fix.patch
 Patch154: krb5-1.12.2-kpasswd_no_check_reply_address.patch
 Patch155: krb5-CVE-2015-8629.patch
 Patch156: krb5-CVE-2015-8631.patch
+
+Patch157: krb5-1.14.4-krb5_sname_match-princ-length.patch
+Patch158: krb5-1.14.4-krb5_sname_match-test.patch
+Patch159: krb5-1.14.4-krb5_sname_match-clean-rule.patch
+
+Patch160: krb5-1.10.4-unregister-library-unload.patch
+
+Patch161: krb5-1.12-dns_canonicalize_hostname.patch
+Patch162: krb5-1.12-dns_canonicalize_hostname-docs.patch
+
+Patch163: krb5-1.14-introduce-RUN_TEST.patch
+Patch164: krb5-1.14-use-RUN_TEST.patch
+Patch165: krb5-1.14-RUN_DB_TEST.patch
+Patch166: krb5-1.14-plugin_base_dir-kadmin-tests.patch
+
+Patch167: krb5-1.15-kprop-kpropd-realm-handling.patch
+Patch168: krb5-1.15-add-kprop_port.patch
+
+Patch169: krb5-1.15-Do-not-indicate-deprecated-GSS-mechanisms.patch
 
 License: MIT
 URL: http://web.mit.edu/kerberos/www/
@@ -174,6 +190,7 @@ practice of sending passwords over the network in unencrypted form.
 Summary: Development files needed to compile Kerberos 5 programs
 Group: Development/Libraries
 Requires: %{name}-libs = %{version}-%{release}
+Requires: libkadm5%{?_isa} = %{version}-%{release}
 Requires: libcom_err-devel
 Requires: keyutils-libs-devel, libselinux-devel
 
@@ -184,7 +201,7 @@ contains the header files and libraries needed for compiling Kerberos
 to install this package.
 
 %package libs
-Summary: The shared libraries used by Kerberos 5
+Summary: The non-admin shared libraries used by Kerberos 5
 Group: System Environment/Libraries
 %if 0%{?rhel} == 6
 # Some of the older libsmbclient builds here incorrectly called
@@ -232,6 +249,7 @@ Conflicts: selinux-policy < 3.7.19-177.el6
 BuildRequires: libverto-module-base
 Requires: libverto-module-base
 %endif
+Requires: libkadm5%{?_isa} = %{version}-%{release}
 
 %description server
 Kerberos is a network authentication system. The krb5-server package
@@ -245,6 +263,7 @@ Group: System Environment/Daemons
 Summary: The LDAP storage plugin for the Kerberos 5 KDC
 Requires: %{name}-server = %{version}-%{release}
 Requires: %{name}-libs = %{version}-%{release}
+Requires: libkadm5%{?_isa} = %{version}-%{release}
 
 %description server-ldap
 Kerberos is a network authentication system. The krb5-server package
@@ -290,6 +309,16 @@ Kerberos is a network authentication system. The krb5-pkinit
 package contains the PKINIT plugin, which allows clients
 to obtain initial credentials from a KDC using a private key and a
 certificate.
+
+%package -n libkadm5
+Summary: Kerberos 5 Administrative libraries
+Group: System Environment/Libraries
+Requires: %{name}-libs%{?_isa} = %{version}-%{release}
+
+%description -n libkadm5
+Kerberos is a network authentication system. The libkadm5 package
+contains only the libkadm5clnt and libkadm5srv shared objects. This
+interface is not considered stable.
 
 %prep
 %setup -q -a 23
@@ -358,9 +387,6 @@ ln -s NOTICE LICENSE
 %patch144 -p1 -b .kdc_max_dgram_reply_size
 %patch145 -p1 -b .localauth_memory_leak
 %patch146 -p1 -b .pam_krb5_nodelete
-%patch147 -p1 -b .kprop_iprop_realm
-%patch148 -p1 -b .kprop_iprop_full_port
-%patch149 -p1 -b .kadmin_kdb5_util_explicit_realm
 %patch150 -p1 -b .kadm5_acl_newline_EOF
 %patch151 -p1 -b .LDAP_policy_display_big_endian
 %patch152 -p1 -b .asc_error_token_tests
@@ -368,6 +394,25 @@ ln -s NOTICE LICENSE
 %patch154 -p1 -b .krb5-1.12.2-kpasswd_no_check_reply_address
 %patch155 -p1 -b .CVE-2015-8629
 %patch156 -p1 -b .CVE-2015-8631
+
+%patch157 -p1 -b .krb5_sname_match-princ-length
+%patch158 -p1 -b .krb5_sname_match-test
+%patch159 -p1 -b .krb5_sname_match-clean-rule
+
+%patch160 -p1 -b .unregister-library-unload
+
+%patch161 -p1 -b .dns_canonicalize_hostname
+%patch162 -p1 -b .dns_canonicalize_hostname-docs
+
+%patch163 -p1 -b .introduce-RUN_TEST
+%patch164 -p1 -b .use-RUN_TEST
+%patch165 -p1 -b .RUN_DB_TEST
+%patch166 -p1 -b .plugin_base_dir-kadmin-tests
+
+%patch167 -p1 -b .kprop-kpropd-realm-handling
+%patch168 -p1 -b .add-kprop_port
+
+%patch169 -p1 -b .Do-not-indicate-deprecated-GSS-mechanisms
 
 rm src/lib/krb5/krb/deltat.c
 
@@ -734,6 +779,10 @@ if [ "$1" -eq "0" ] ; then
 fi
 exit 0
 
+%post -n libkadm5 -p /sbin/ldconfig
+
+%postun -n libkadm5 -p /sbin/ldconfig
+
 %files workstation
 %defattr(-,root,root,-)
 %doc doc/user*.ps.gz doc/user*.pdf src/config-files/services.append
@@ -816,6 +865,7 @@ exit 0
 %dir %{_libdir}/krb5/plugins/kdb
 %dir %{_libdir}/krb5/plugins/preauth
 %dir %{_libdir}/krb5/plugins/authdata
+%{_libdir}/krb5/plugins/kdb/db2.so
 
 # Problem-reporting tool.
 %{_sbindir}/krb5-send-pr
@@ -884,8 +934,6 @@ exit 0
 %{_libdir}/libgssrpc.so.*
 %{_libdir}/libk5crypto.so.*
 %endif
-%{_libdir}/libkadm5clnt_mit.so.*
-%{_libdir}/libkadm5srv_mit.so.*
 %{_libdir}/libkdb5.so.*
 %if %{separate_usr}
 /%{_lib}/libkrb5.so.*
@@ -897,7 +945,6 @@ exit 0
 %dir %{_libdir}/krb5
 %dir %{_libdir}/krb5/plugins
 %dir %{_libdir}/krb5/plugins/*
-%{_libdir}/krb5/plugins/kdb/db2.so
 %if ! %{WITH_SYSVERTO}
 %{_libdir}/libverto-k5ev.so
 %{_libdir}/libverto-k5ev.so.*
@@ -933,10 +980,6 @@ exit 0
 %{_libdir}/libgssapi_krb5.so
 %{_libdir}/libgssrpc.so
 %{_libdir}/libk5crypto.so
-%{_libdir}/libkadm5clnt.so
-%{_libdir}/libkadm5clnt_mit.so
-%{_libdir}/libkadm5srv.so
-%{_libdir}/libkadm5srv_mit.so
 %{_libdir}/libkdb5.so
 %{_libdir}/libkrb5.so
 %{_libdir}/libkrb5support.so
@@ -958,8 +1001,48 @@ exit 0
 %{_sbindir}/gss-server
 %{_sbindir}/uuserver
 
+%files -n libkadm5
+%defattr(-,root,root,-)
+%{_libdir}/libkadm5clnt.so
+%{_libdir}/libkadm5clnt_mit.so
+%{_libdir}/libkadm5srv.so
+%{_libdir}/libkadm5srv_mit.so
+%{_libdir}/libkadm5clnt_mit.so.*
+%{_libdir}/libkadm5srv_mit.so.*
 
 %changelog
+* Mon Nov 21 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-65
+- Avoid indicating deprecated GSS mechanisms
+- Resolves: #1396442
+
+* Tue Oct 04 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-64
+- Update *prop port behavior to match upstream
+- Resolves: #1346062
+
+* Thu Sep 29 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-63
+- Split out libkadm5
+- Resolves: #1351284
+
+* Thu Sep 22 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-62
+- Set plugin_base_dir for kadmin tests
+- Resolves: #1281348
+
+* Tue Sep 13 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-61
+- Fix uses of system installed files in test suite
+- Resolves: #1281348
+
+* Tue Sep 13 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-60
+- Add support for dns_canonicalize_hostname
+- Resolves: #1332696
+
+* Wed Aug 24 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-59
+- Fix unloading of K5_KEY_GSS_KRB5_ERROR_MESSAGE for refcounting
+- Resolves: #1360120
+
+* Mon Aug 15 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-58
+- Check principal length in krb5_sname_match()
+- Resolves: #1351804
+
 * Tue Mar 08 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-57
 - Fix memory leak in krb5 selinux patch
 - Resolves: #1311287
