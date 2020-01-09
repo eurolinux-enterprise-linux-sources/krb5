@@ -29,7 +29,7 @@
 Summary: The Kerberos network authentication system
 Name: krb5
 Version: 1.10.3
-Release: 42z1%{?dist}
+Release: 57%{?dist}
 # Maybe we should explode from the now-available-to-everybody tarball instead?
 # http://web.mit.edu/kerberos/dist/krb5/1.10/krb5-1.10.3-signed.tar
 Source0: krb5-%{version}.tar.gz
@@ -117,8 +117,19 @@ Patch141: krb5-1.12.1-CVE_2014_5355_fix_krb5_read_message_handling.patch
 Patch142: krb5-CVE_2014_5353_fix_LDAP_misused_policy_name_crash.patch
 Patch143: krb5-1.13_remove_stray_include_in_localauth_plugin_h.patch
 Source101: http://web.mit.edu/kerberos/advisories/2014-001-patch.txt.asc
-Patch144: krb5-CVE-2015-8629.patch
-Patch145: krb5-CVE-2015-8631.patch
+Patch144: krb5-kdc_max_dgram_reply_size.patch
+Patch145: krb5-1.14-localauth_memory_leak.patch
+Patch146: krb5-pam_krb5_nodelete.patch
+Patch147: krb5-kprop_iprop_realm.patch
+Patch148: krb5-kprop_iprop_full_port.patch
+Patch149: krb5-kadmin_kdb5_util_explicit_realm.patch
+Patch150: krb5-1.15-kadm5_acl_newline_EOF.patch
+Patch151: krb5-1.13.2-LDAP_policy_display_big_endian.patch
+Patch152: krb5-1.12.z-asc_error_token_tests.patch
+Patch153: krb5-1.12.z-asc_error_token_fix.patch
+Patch154: krb5-1.12.2-kpasswd_no_check_reply_address.patch
+Patch155: krb5-CVE-2015-8629.patch
+Patch156: krb5-CVE-2015-8631.patch
 
 License: MIT
 URL: http://web.mit.edu/kerberos/www/
@@ -344,8 +355,19 @@ ln -s NOTICE LICENSE
 %patch141 -p1 -b .krb5-1.12.1-cve_2014_5355_fix_krb5_read_message_handling
 %patch142 -p1 -b .krb5-cve_2014_5353_fix_ldap_misused_policy_name_crash
 %patch143 -p1 -b .krb5-1.13_remove_stray_include_in_localauth_plugin_h
-%patch144 -p1 -b .CVE-2015-8629
-%patch145 -p1 -b .CVE-2015-8631
+%patch144 -p1 -b .kdc_max_dgram_reply_size
+%patch145 -p1 -b .localauth_memory_leak
+%patch146 -p1 -b .pam_krb5_nodelete
+%patch147 -p1 -b .kprop_iprop_realm
+%patch148 -p1 -b .kprop_iprop_full_port
+%patch149 -p1 -b .kadmin_kdb5_util_explicit_realm
+%patch150 -p1 -b .kadm5_acl_newline_EOF
+%patch151 -p1 -b .LDAP_policy_display_big_endian
+%patch152 -p1 -b .asc_error_token_tests
+%patch153 -p1 -b .asc_error_token_fix
+%patch154 -p1 -b .krb5-1.12.2-kpasswd_no_check_reply_address
+%patch155 -p1 -b .CVE-2015-8629
+%patch156 -p1 -b .CVE-2015-8631
 
 rm src/lib/krb5/krb/deltat.c
 
@@ -846,7 +868,7 @@ exit 0
 %defattr(-,root,root,-)
 %doc README NOTICE LICENSE
 %docdir %{_mandir}
-%verify(not md5 size mtime) %config(noreplace) /etc/krb5.conf
+%config(noreplace) /etc/krb5.conf
 /%{_mandir}/man1/kerberos.1*
 /%{_mandir}/man5/.k5identity.5*
 /%{_mandir}/man5/.k5login.5*
@@ -938,10 +960,67 @@ exit 0
 
 
 %changelog
-* Fri Feb 12 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-42z1
+* Tue Mar 08 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-57
+- Fix memory leak in krb5 selinux patch
+- Resolves: #1311287
+
+* Fri Feb 12 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-56
 - Fix CVE-2015-8629 and CVE-2015-8631
-- Also fix a spec trigger issue that prevents building
-- Resolves: #1306973
+- Remove extra trigger from spec file
+- Resolves: #1306974
+
+* Wed Jan 20 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-55
+- Backport removal of kpasswd reply address check
+- Resolves: #1296177
+
+* Mon Jan 18 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-54
+- Fix gss_accept_sec_context output_token return in error cases
+  Also backport upstream test for this.
+- Resolves: #1279249
+
+* Mon Jan 18 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-53
+- Fix big-endian LDAP ticket policy display
+- Resolves: #1281734
+
+* Wed Jan 13 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-52
+- Fix kadmind requiring kadm5.acl to end in \n on non-x86
+- Resolves: #1281725
+
+* Mon Jan 11 2016 Robbie Harwood <rharwood@redhat.com> - 1.10.3-51
+- Make sure kadmind spawns kdb5_util with the correct realm
+- Resolves: #1109629
+
+* Wed Dec 09 2015 Robbie Harwood <rharwood@redhat.com> - 1.10.3-50
+- Actually apply the patch that I just added
+- Resolves: #1104261
+
+* Wed Dec 09 2015 Robbie Harwood <rharwood@redhat.com> - 1.10.3-49
+- Fix issue with kadmin spawning kprop without port during iprop
+- Resolves: #1104261
+
+* Mon Dec 07 2015 Robbie Harwood <rharwood@redhat.com> - 1.10.3-48
+- Fix issue with kprop not starting iprop for non-default realm
+- Resolves: #1081714
+
+* Mon Nov 16 2015 Robbie Harwood <rharwood@redhat.com> - 1.10.3-47
+- Backport fixes for pam_krb5 memory leaks
+- Resolves: #1075647
+
+* Fri Nov 13 2015 Robbie Harwood <rharwood@redhat.com> - 1.10.3-46
+- Fix a memory leak in the localauth plugin
+- Resolves: #1205161
+
+* Wed Nov 11 2015 Robbie Harwood <rharwood@redhat.com> - 1.10.3-45
+- Document kdc_max_dgram_reply_size option in kdc.conf
+- Resolves: #1258211
+
+* Fri Nov 06 2015 Robbie Harwood <rharwood@redhat.com> - 1.10.3-44
+- Configure kadmind to release the krb5_prop port
+- Resolves: #1231886
+
+* Fri Nov 06 2015 Robbie Harwood <rharwood@redhat.com> - 1.10.3-43
+- Fix RPM verification attributes of /etc/krb5.conf
+- Resolves: #1227719
 
 * Fri Apr 10 2015 Roland Mainz <rmainz@redhat.com> - 1.10.3-42
 - fix for RH bug #1210704 ("Remove stray include in krb5's

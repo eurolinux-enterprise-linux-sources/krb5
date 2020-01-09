@@ -48,8 +48,9 @@ start() {
 	    [ -x $kadmind ] || exit 5
 	fi
 	echo -n $"Starting $prog: "
-	# tell portreserve to release the kerberos-adm port
+	# tell portreserve to release the kerberos-adm and krb5_prop ports
 	[ -x /sbin/portrelease ] && /sbin/portrelease kerberos-adm &>/dev/null || :
+	[ -x /sbin/portrelease ] && /sbin/portrelease krb5_prop &>/dev/null || :
 	daemon ${kadmind} ${KRB5REALM:+-r ${KRB5REALM}} -P $pidfile $KADMIND_ARGS
 	RETVAL=$?
 	echo

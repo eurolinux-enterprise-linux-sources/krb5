@@ -465,7 +465,7 @@ which we used earlier, is some improvement.
  
 --- krb5/src/util/support/selinux.c
 +++ krb5/src/util/support/selinux.c
-@@ -0,0 +1,405 @@
+@@ -0,0 +1,412 @@
 +/*
 + * Copyright 2007,2008,2009,2011,2012 Red Hat, Inc.  All Rights Reserved.
 + *
@@ -572,6 +572,7 @@ which we used earlier, is some improvement.
 +					if (previous != NULL) {
 +						freecon(previous);
 +					}
++					cleanup_fscreatecon();
 +					return NULL;
 +				}
 +				len = strlen(wd) + 1 + strlen(pathname) + 1;
@@ -581,6 +582,7 @@ which we used earlier, is some improvement.
 +					if (previous != NULL) {
 +						freecon(previous);
 +					}
++					cleanup_fscreatecon();
 +					return NULL;
 +				}
 +				sprintf(genpath, "%s/%s", wd, pathname);
@@ -626,6 +628,7 @@ which we used earlier, is some improvement.
 +					if (previous != NULL) {
 +						freecon(previous);
 +					}
++					cleanup_fscreatecon();
 +					return NULL;
 +				}
 +			}
@@ -635,6 +638,7 @@ which we used earlier, is some improvement.
 +				if (previous != NULL) {
 +					freecon(previous);
 +				}
++				cleanup_fscreatecon();
 +				return NULL;
 +			}
 +#endif
@@ -643,6 +647,7 @@ which we used earlier, is some improvement.
 +				if (previous != NULL) {
 +					freecon(previous);
 +				}
++				cleanup_fscreatecon();
 +				return NULL;
 +			}
 +			currentsc = NULL;
@@ -680,6 +685,7 @@ which we used earlier, is some improvement.
 +				if (previous != NULL) {
 +					freecon(previous);
 +				}
++				cleanup_fscreatecon();
 +				return NULL;
 +			}
 +			freecon(configuredsc);
@@ -714,6 +720,7 @@ which we used earlier, is some improvement.
 +		if (previous != NULL) {
 +			freecon(previous);
 +		}
++		cleanup_fscreatecon();
 +	}
 +}
 +
