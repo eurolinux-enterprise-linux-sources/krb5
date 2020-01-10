@@ -23,25 +23,25 @@ doc/plugindev/certauth.rst and doc/admin/krb5_conf.rst.
 ticket: 8561 (new)
 (cherry picked from commit b619ce84470519bea65470be3263cd85fba94f57)
 ---
- doc/admin/conf_files/krb5_conf.rst            |  21 ++
- doc/plugindev/certauth.rst                    |  27 ++
- doc/plugindev/index.rst                       |   1 +
- src/Makefile.in                               |   1 +
- src/configure.in                              |   1 +
- src/include/Makefile.in                       |   1 +
- src/include/k5-int.h                          |   3 +-
- src/include/krb5/certauth_plugin.h            | 103 ++++++
- src/lib/krb5/krb/plugin.c                     |   3 +-
- src/plugins/certauth/test/Makefile.in         |  20 ++
- .../certauth/test/certauth_test.exports       |   2 +
- src/plugins/certauth/test/deps                |  14 +
- src/plugins/certauth/test/main.c              | 209 +++++++++++
- src/plugins/preauth/pkinit/pkinit_crypto.h    |   4 +
- .../preauth/pkinit/pkinit_crypto_openssl.c    |  30 ++
- src/plugins/preauth/pkinit/pkinit_srv.c       | 335 +++++++++++++++---
- src/plugins/preauth/pkinit/pkinit_trace.h     |   5 +
- src/tests/Makefile.in                         |   1 +
- src/tests/t_certauth.py                       |  47 +++
+ doc/admin/conf_files/krb5_conf.rst                 |  21 ++
+ doc/plugindev/certauth.rst                         |  27 ++
+ doc/plugindev/index.rst                            |   1 +
+ src/Makefile.in                                    |   1 +
+ src/configure.in                                   |   1 +
+ src/include/Makefile.in                            |   1 +
+ src/include/k5-int.h                               |   3 +-
+ src/include/krb5/certauth_plugin.h                 | 103 +++++++
+ src/lib/krb5/krb/plugin.c                          |   3 +-
+ src/plugins/certauth/test/Makefile.in              |  20 ++
+ src/plugins/certauth/test/certauth_test.exports    |   2 +
+ src/plugins/certauth/test/deps                     |  14 +
+ src/plugins/certauth/test/main.c                   | 209 +++++++++++++
+ src/plugins/preauth/pkinit/pkinit_crypto.h         |   4 +
+ src/plugins/preauth/pkinit/pkinit_crypto_openssl.c |  30 ++
+ src/plugins/preauth/pkinit/pkinit_srv.c            | 335 ++++++++++++++++++---
+ src/plugins/preauth/pkinit/pkinit_trace.h          |   5 +
+ src/tests/Makefile.in                              |   1 +
+ src/tests/t_certauth.py                            |  47 +++
  19 files changed, 786 insertions(+), 42 deletions(-)
  create mode 100644 doc/plugindev/certauth.rst
  create mode 100644 src/include/krb5/certauth_plugin.h

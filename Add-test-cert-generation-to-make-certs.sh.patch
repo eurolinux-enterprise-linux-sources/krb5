@@ -8,7 +8,7 @@ everything but the make-certs change since infrastructure cannot patch
 binaries.  Plan to run make-certs during build, but this will only
 work with openssl < 1.1.
 ---
- src/tests/dejagnu/pkinit-certs/make-certs.sh | 53 +++++++++++++++++++-
+ src/tests/dejagnu/pkinit-certs/make-certs.sh | 53 +++++++++++++++++++++++++++-
  1 file changed, 52 insertions(+), 1 deletion(-)
 
 diff --git a/src/tests/dejagnu/pkinit-certs/make-certs.sh b/src/tests/dejagnu/pkinit-certs/make-certs.sh

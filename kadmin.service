@@ -1,7 +1,6 @@
 [Unit]
 Description=Kerberos 5 Password-changing and Administration
-Wants=network-online.target
-After=syslog.target network.target network-online.target
+After=syslog.target network.target
 
 [Service]
 Type=forking

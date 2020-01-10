@@ -12,7 +12,7 @@
 Summary: The Kerberos network authentication system
 Name: krb5
 Version: 1.15.1
-Release: 37%{?dist}
+Release: 19%{?dist}
 
 # - Maybe we should explode from the now-available-to-everybody tarball instead?
 # http://web.mit.edu/kerberos/dist/krb5/1.13/krb5-1.13.2-signed.tar
@@ -89,44 +89,6 @@ Patch174: Fix-certauth-built-in-module-returns.patch
 Patch175: Add-test-cert-with-no-extensions.patch
 Patch176: Expose-context-errors-in-pkinit_server_plugin_init.patch
 Patch177: Limit-ticket-lifetime-to-2-31-1-seconds.patch
-Patch178: Fix-hex-conversion-of-PKINIT-certid-strings.patch
-Patch179: Simplify-PKINIT-cert-iteration-and-selection.patch
-Patch180: Fix-PKINIT-cert-matching-data-construction.patch
-Patch181: Save-SANs-separately-and-unparse-them-with-NO_REALM.patch
-Patch182: Return-UPN-SANs-as-strings.patch
-Patch183: Fix-segfault-in-finish_dispatch.patch
-Patch184: Fix-flaws-in-LDAP-DN-checking.patch
-Patch185: Merge-duplicate-subsections-in-profile-library.patch
-Patch186: Continue-after-KRB5_CC_END-in-KCM-cache-iteration.patch
-Patch187: Exit-with-status-0-from-kadmind.patch
-Patch188: Ignore-dotfiles-in-profile-includedir.patch
-Patch189: Add-k5_dir_filenames-to-libkrb5support.patch
-Patch190: Process-profile-includedir-in-sorted-order.patch
-Patch191: Add-German-translation.patch
-Patch192: Remove-nodes-option-from-make-certs-scripts.patch
-Patch193: Make-krb5_preauth_context-a-pointer-type.patch
-Patch194: Properly-scope-per-request-preauth-data.patch
-Patch195: Add-tests-for-per-request-preauth-data-scoping.patch
-Patch196: Document-and-check-init_creds-context-requirement.patch
-Patch197: Add-test-case-for-PKINIT-DH-renegotiation.patch
-Patch198: Echo-KDC-cookies-in-preauth-tryagain.patch
-Patch199: Adjust-processing-of-pa_type-ccache-config.patch
-Patch200: Simplify-k5_preauth_tryagain.patch
-Patch201: Remove-sent_nontrivial_preauth-field.patch
-Patch202: Track-preauth-failures-instead-of-tries.patch
-Patch203: Preserve-method-data-in-get_in_tkt.c.patch
-Patch204: Continue-preauth-after-client-side-failures.patch
-Patch205: Continue-after-KDC_ERR_PREAUTH_FAILED.patch
-Patch206: Add-test-cases-for-preauth-fallback-behavior.patch
-Patch207: Include-preauth-name-in-trace-output-if-possible.patch
-Patch208: Add-vector-support-to-k5_sha256.patch
-Patch209: Use-SHA-256-instead-of-MD5-for-audit-ticket-IDs.patch
-Patch211: In-FIPS-mode-add-plaintext-fallback-for-RC4-usages-a.patch
-Patch212: Fix-bugs-with-concurrent-use-of-MEMORY-ccaches.patch
-Patch213: Don-t-include-all-MEMORY-ccaches-in-collection.patch
-Patch214: Add-libkrb5support-hex-functions-and-tests.patch
-Patch215: Add-a-hash-table-implementation-to-libkrb5support.patch
-Patch216: Use-a-hash-table-for-MEMORY-ccache-resolution.patch
 
 License: MIT
 URL: http://web.mit.edu/kerberos/www/
@@ -349,44 +311,6 @@ ONLY by kerberos itself. Do not depend on this package.
 %patch175 -p1 -b .Add-test-cert-with-no-extensions
 %patch176 -p1 -b .Expose-context-errors-in-pkinit_server_plugin_init
 %patch177 -p1 -b .Limit-ticket-lifetime-to-2-31-1-seconds
-%patch178 -p1 -b .Fix-hex-conversion-of-PKINIT-certid-strings
-%patch179 -p1 -b .Simplify-PKINIT-cert-iteration-and-selection
-%patch180 -p1 -b .Fix-PKINIT-cert-matching-data-construction
-%patch181 -p1 -b .Save-SANs-separately-and-unparse-them-with-NO_REALM
-%patch182 -p1 -b .Return-UPN-SANs-as-strings
-%patch183 -p1 -b .Fix-segfault-in-finish_dispatch
-%patch184 -p1 -b .Fix-flaws-in-LDAP-DN-checking
-%patch185 -p1 -b .Merge-duplicate-subsections-in-profile-library
-%patch186 -p1 -b .Continue-after-KRB5_CC_END-in-KCM-cache-iteration
-%patch187 -p1 -b .Exit-with-status-0-from-kadmind
-%patch188 -p1 -b .Ignore-dotfiles-in-profile-includedir
-%patch189 -p1 -b .Add-k5_dir_filenames-to-libkrb5support
-%patch190 -p1 -b .Process-profile-includedir-in-sorted-order
-%patch191 -p1 -b .Add-German-translation
-%patch192 -p1 -b .Remove-nodes-option-from-make-certs-scripts
-%patch193 -p1 -b .Make-krb5_preauth_context-a-pointer-type
-%patch194 -p1 -b .Properly-scope-per-request-preauth-data
-%patch195 -p1 -b .Add-tests-for-per-request-preauth-data-scoping
-%patch196 -p1 -b .Document-and-check-init_creds-context-requirement
-%patch197 -p1 -b .Add-test-case-for-PKINIT-DH-renegotiation
-%patch198 -p1 -b .Echo-KDC-cookies-in-preauth-tryagain
-%patch199 -p1 -b .Adjust-processing-of-pa_type-ccache-config
-%patch200 -p1 -b .Simplify-k5_preauth_tryagain
-%patch201 -p1 -b .Remove-sent_nontrivial_preauth-field
-%patch202 -p1 -b .Track-preauth-failures-instead-of-tries
-%patch203 -p1 -b .Preserve-method-data-in-get_in_tkt.c
-%patch204 -p1 -b .Continue-preauth-after-client-side-failures
-%patch205 -p1 -b .Continue-after-KDC_ERR_PREAUTH_FAILED
-%patch206 -p1 -b .Add-test-cases-for-preauth-fallback-behavior
-%patch207 -p1 -b .Include-preauth-name-in-trace-output-if-possible
-%patch208 -p1 -b .Add-vector-support-to-k5_sha256
-%patch209 -p1 -b .Use-SHA-256-instead-of-MD5-for-audit-ticket-IDs
-%patch211 -p1 -b .In-FIPS-mode-add-plaintext-fallback-for-RC4-usages-a
-%patch212 -p1 -b .Fix-bugs-with-concurrent-use-of-MEMORY-ccaches
-%patch213 -p1 -b .Don-t-include-all-MEMORY-ccaches-in-collection
-%patch214 -p1 -b .Add-libkrb5support-hex-functions-and-tests
-%patch215 -p1 -b .Add-a-hash-table-implementation-to-libkrb5support
-%patch216 -p1 -b .Use-a-hash-table-for-MEMORY-ccache-resolution
 
 ln NOTICE LICENSE
 
@@ -470,7 +394,6 @@ CPPFLAGS="`echo $DEFINES $INCLUDES`"
 	--with-dirsrv-account-locking \
 %endif
 	--enable-pkinit \
-	--with-crypto-impl=builtin \
 	--with-pkinit-crypto-impl=openssl \
 	--with-tls-impl=openssl \
 	--with-system-verto \
@@ -892,85 +815,6 @@ exit 0
 %{_libdir}/libkadm5srv_mit.so.*
 
 %changelog
-* Tue Dec 18 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-37
-- Bring back builtin crypto (openssl broke too many FIPS setups)
-- Resolves: #1657890
-
-* Mon Dec 17 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-36
-- Clean up MEMORY ccache behavior to match upstream more closely
-- Resolves: #1657890
-
-* Tue Dec 11 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-35
-- Fix bugs with concurrent use of MEMORY ccaches
-- Resolves: #1657890
-
-* Wed Aug 01 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-34
-- In FIPS mode, add plaintext fallback for RC4 usages and taint
-- Resolves: #1570600
-
-* Tue Jul 10 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-33
-- Use SHA-256 instead of MD5 for audit ticket IDs
-- Resolves: #1570600
-
-* Mon Jun 11 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-32
-- Include preauth name in trace output if possible
-- Update cert generation scripts to work on modern openssl
-- Fix per-request preauth scoping
-- Add test case for PKINIT DH renegotiation
-- Echo KDC cookies in preauth tryagain
-- Fall back to other preauth mechanisms after failures
-- Resolves: #1540130
-
-* Fri Jun 08 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-31
-- Add German translation
-- Resolves: #1497301
-
-* Fri Jun 08 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-30
-- Add default pkinit_anchors value to krb5.conf
-- Resolves: #1508081
-
-* Thu Jun 07 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-29
-- Process profile includedir in sorted order
-- Also, ignore dotfiles in included directories
-- Resolves: #1539824
-
-* Thu Jun 07 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-28
-- Exit with status 0 from kadmind
-- Resolves: #1373909
-
-* Thu Jun 07 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-27
-- Continue after KRB5_CC_END in KCM cache iteration
-- Resolves: #1563166
-
-* Thu Jun 07 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-26
-- Merge duplicate subsections in profile library
-- Resolves: #1519625
-
-* Thu Jun 07 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-25
-- Fix service dependencies on network state
-- Resolves: #1525232
-
-* Thu Jun 07 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-24
-- Explicitly use openssl rather than builtin crypto
-- Resolves: #1570600
-
-* Mon Apr 30 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-23
-- Fix flaws in LDAP DN checking (CVE-2018-5729, CVE-2018-5730)
-- Resolves: #1562684
-- Resolves: #1562679
-
-* Wed Apr 18 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-22
-- Fix segfault in finish_dispatch()
-- Resolves: #1568970
-
-* Thu Apr 05 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-21
-- Unparse SANs with NO_REALM
-- Resolves: #1482457
-
-* Thu Mar 22 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-20
-- Fix hex conversion of PKINIT certid strings
-- Resolves: #1538491
-
 * Fri Mar 02 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-19
 - Limit ticket lifetime to 2^31-1 seconds
 - Resolves: #1554723
