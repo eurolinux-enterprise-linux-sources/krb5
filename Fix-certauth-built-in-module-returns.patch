@@ -20,8 +20,8 @@ there are no SANs at all.
 ticket: 8561
 (cherry picked from commit 07243f85a760fb37f0622d7ff0177db3f19ab025)
 ---
- src/plugins/preauth/pkinit/pkinit_crypto_openssl.c | 39 ++++++++++------------
- src/plugins/preauth/pkinit/pkinit_srv.c            | 14 +++++---
+ .../preauth/pkinit/pkinit_crypto_openssl.c    | 39 +++++++++----------
+ src/plugins/preauth/pkinit/pkinit_srv.c       | 14 ++++---
  2 files changed, 27 insertions(+), 26 deletions(-)
 
 diff --git a/src/plugins/preauth/pkinit/pkinit_crypto_openssl.c b/src/plugins/preauth/pkinit/pkinit_crypto_openssl.c

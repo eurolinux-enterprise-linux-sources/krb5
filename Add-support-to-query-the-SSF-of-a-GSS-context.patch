@@ -17,18 +17,18 @@ ticket: 8569 (new)
 ---
  src/include/k5-int.h                    |  1 +
  src/lib/crypto/krb/crypto_int.h         |  1 +
- src/lib/crypto/krb/enctype_util.c       | 16 ++++++++++++++++
- src/lib/crypto/krb/etypes.c             | 33 ++++++++++++++++++---------------
+ src/lib/crypto/krb/enctype_util.c       | 16 ++++++++++++
+ src/lib/crypto/krb/etypes.c             | 33 ++++++++++++++-----------
  src/lib/crypto/libk5crypto.exports      |  1 +
- src/lib/gssapi/generic/gssapi_ext.h     | 11 +++++++++++
- src/lib/gssapi/generic/gssapi_generic.c |  9 +++++++++
- src/lib/gssapi/krb5/gssapiP_krb5.h      |  6 ++++++
- src/lib/gssapi/krb5/gssapi_krb5.c       |  4 ++++
- src/lib/gssapi/krb5/inq_context.c       | 27 +++++++++++++++++++++++++++
+ src/lib/gssapi/generic/gssapi_ext.h     | 11 +++++++++
+ src/lib/gssapi/generic/gssapi_generic.c |  9 +++++++
+ src/lib/gssapi/krb5/gssapiP_krb5.h      |  6 +++++
+ src/lib/gssapi/krb5/gssapi_krb5.c       |  4 +++
+ src/lib/gssapi/krb5/inq_context.c       | 27 ++++++++++++++++++++
  src/lib/gssapi/libgssapi_krb5.exports   |  1 +
  src/lib/gssapi32.def                    |  3 +++
  src/lib/krb5_32.def                     |  3 +++
- src/tests/gssapi/t_enctypes.c           | 14 ++++++++++++++
+ src/tests/gssapi/t_enctypes.c           | 14 +++++++++++
  14 files changed, 115 insertions(+), 15 deletions(-)
 
 diff --git a/src/include/k5-int.h b/src/include/k5-int.h

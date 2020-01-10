@@ -9,7 +9,7 @@ id-pkinit-san match against canonicalized client principal]
 ticket: 8528
 (cherry picked from commit d520fd3f032121b61b22681838af96ee505fe44d)
 ---
- src/tests/t_pkinit.py | 57 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ src/tests/t_pkinit.py | 57 +++++++++++++++++++++++++++++++++++++++++++
  1 file changed, 57 insertions(+)
 
 diff --git a/src/tests/t_pkinit.py b/src/tests/t_pkinit.py

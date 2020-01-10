@@ -10,7 +10,7 @@ return parameters are always initialized.
 (cherry picked from commit c6b772523db9d7791ee1c56eb512c4626556a4e7)
 (cherry picked from commit 23086ac768a32db1e40a9b63684dbcfd76aba033)
 ---
- src/plugins/preauth/pkinit/pkinit_crypto_openssl.c | 224 +++++++++++----------
+ .../preauth/pkinit/pkinit_crypto_openssl.c    | 224 +++++++++---------
  1 file changed, 114 insertions(+), 110 deletions(-)
 
 diff --git a/src/plugins/preauth/pkinit/pkinit_crypto_openssl.c b/src/plugins/preauth/pkinit/pkinit_crypto_openssl.c

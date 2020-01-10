@@ -1,0 +1,42 @@
+From 0890a832accffe4ddfb882528346b3d9c65b351c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Fabiano=20Fid=C3=AAncio?= <fidencio@redhat.com>
+Date: Wed, 28 Mar 2018 18:27:06 +0200
+Subject: [PATCH] Continue after KRB5_CC_END in KCM cache iteration
+
+The KCM server returns KRB5_CC_END in response to a GET_CACHE_BY_UUID
+request to indicate that the specified ccache uuid no longer exists.
+In krb5_ptcursor_next(), ignore this error and continue the iteration,
+as the Heimdal KCM client code does.
+
+In addition to addressing the case where a third party deletes a cache
+between the GET_CACHE_UUID_LIST request and when we reach that uuid in
+the iteration, this change also fixes a bug in kdestroy -A where the
+caller deletes the primary cache and we later request it by uuid when
+iterating over the list.
+
+[ghudson@mit.edu: rewrote commit message; edited comment]
+
+(cherry picked from commit 49087f5e6309f298f8898c35af6f4ade418ced60)
+
+ticket: 8658
+version_fixed: 1.16.1
+
+(cherry picked from commit 576d4294ea789c3d25c50a43fe9246cfe499585f)
+---
+ src/lib/krb5/ccache/cc_kcm.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/lib/krb5/ccache/cc_kcm.c b/src/lib/krb5/ccache/cc_kcm.c
+index a889e67b4..a3afd7056 100644
+--- a/src/lib/krb5/ccache/cc_kcm.c
++++ b/src/lib/krb5/ccache/cc_kcm.c
+@@ -966,6 +966,9 @@ kcm_ptcursor_next(krb5_context context, krb5_cc_ptcursor cursor,
+         kcmreq_init(&req, KCM_OP_GET_CACHE_BY_UUID, NULL);
+         k5_buf_add_len(&req.reqbuf, id, KCM_UUID_LEN);
+         ret = kcmio_call(context, data->io, &req);
++        /* Continue if the cache has been deleted. */
++        if (ret == KRB5_CC_END)
++            continue;
+         if (ret)
+             goto cleanup;
+         ret = kcmreq_get_name(&req, &name);

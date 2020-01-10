@@ -5,7 +5,7 @@ Subject: [PATCH] krb5-1.12-ktany.patch
 
 ---
  src/lib/krb5/keytab/Makefile.in |   3 +
- src/lib/krb5/keytab/kt_any.c    | 292 ++++++++++++++++++++++++++++++++++++++++
+ src/lib/krb5/keytab/kt_any.c    | 292 ++++++++++++++++++++++++++++++++
  src/lib/krb5/keytab/ktbase.c    |   7 +-
  3 files changed, 301 insertions(+), 1 deletion(-)
  create mode 100644 src/lib/krb5/keytab/kt_any.c

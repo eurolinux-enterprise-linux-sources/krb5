@@ -18,14 +18,14 @@ ticket: 8352
  src/Makefile.in                  |   1 +
  src/config/pre.in                |   2 +
  src/configure.in                 |   3 +
- src/lib/krb5/krb/Makefile.in     |  14 ++--
- src/lib/krb5/krb/t_valid_times.c | 109 ++++++++++++++++++++++++++++++
+ src/lib/krb5/krb/Makefile.in     |  14 +++-
+ src/lib/krb5/krb/t_valid_times.c | 109 ++++++++++++++++++++++++
  src/tests/Makefile.in            |   1 +
- src/tests/gssapi/Makefile.in     |  27 ++++----
- src/tests/gssapi/t_gssapi.py     |  32 +++++++++
- src/tests/gssapi/t_lifetime.c    | 140 +++++++++++++++++++++++++++++++++++++++
+ src/tests/gssapi/Makefile.in     |  27 +++---
+ src/tests/gssapi/t_gssapi.py     |  32 +++++++
+ src/tests/gssapi/t_lifetime.c    | 140 +++++++++++++++++++++++++++++++
  src/tests/t_kdb.py               |   7 ++
- src/tests/t_y2038.py             |  75 +++++++++++++++++++++
+ src/tests/t_y2038.py             |  75 +++++++++++++++++
  11 files changed, 395 insertions(+), 16 deletions(-)
  create mode 100644 src/lib/krb5/krb/t_valid_times.c
  create mode 100644 src/tests/gssapi/t_lifetime.c

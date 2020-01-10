@@ -1,0 +1,826 @@
+From 6909a4e3aa5c41cfd896b91cc8f9560481dddfd1 Mon Sep 17 00:00:00 2001
+From: Greg Hudson <ghudson@mit.edu>
+Date: Fri, 20 Jan 2017 12:44:12 -0500
+Subject: [PATCH] Add test cases for preauth fallback behavior
+
+Add options to icred for performing optimistic preauth and setting
+preauth options, and for choosing between the normal and stepwise
+interfaces.  Add options to the test preauth module to allow induced
+failures at several points in processing, factoring out some padata
+manipulation functions into a new file to avoid repeating too much
+code.  Add test cases to t_preauth.py using the new facilities to
+exercise and verify several preauth fallback scenarios.  Amend the
+tryagain test case in t_pkinit.py to look for more trace log messages.
+
+ticket: 8537
+(cherry picked from commit 748beda1e36d76bed8b06b272ecb72988eede94b)
+[rharwood@redhat.com: more expected_trace]
+---
+ src/plugins/preauth/test/Makefile.in |   4 +-
+ src/plugins/preauth/test/cltest.c    |  86 ++++++++++-----
+ src/plugins/preauth/test/common.c    |  61 +++++++++++
+ src/plugins/preauth/test/common.h    |  41 +++++++
+ src/plugins/preauth/test/deps        |  14 ++-
+ src/plugins/preauth/test/kdctest.c   |  96 ++++++++++------
+ src/tests/icred.c                    |  69 +++++++++---
+ src/tests/t_general.py               |   1 +
+ src/tests/t_pkinit.py                |  12 +-
+ src/tests/t_preauth.py               | 158 ++++++++++++++++++++++++++-
+ 10 files changed, 452 insertions(+), 90 deletions(-)
+ create mode 100644 src/plugins/preauth/test/common.c
+ create mode 100644 src/plugins/preauth/test/common.h
+
+diff --git a/src/plugins/preauth/test/Makefile.in b/src/plugins/preauth/test/Makefile.in
+index ac3cb8155..77321b60f 100644
+--- a/src/plugins/preauth/test/Makefile.in
++++ b/src/plugins/preauth/test/Makefile.in
+@@ -9,9 +9,9 @@ RELDIR=../plugins/preauth/test
+ SHLIB_EXPDEPS=$(KRB5_BASE_DEPLIBS)
+ SHLIB_EXPLIBS=$(KRB5_BASE_LIBS)
+ 
+-STLIBOBJS=cltest.o kdctest.o
++STLIBOBJS=cltest.o kdctest.o common.o
+ 
+-SRCS= $(srcdir)/cltest.c $(srcdir)/kdctest.c
++SRCS= $(srcdir)/cltest.c $(srcdir)/kdctest.c $(srcdir)/common.c
+ 
+ all-unix: all-liblinks
+ install-unix: install-libs
+diff --git a/src/plugins/preauth/test/cltest.c b/src/plugins/preauth/test/cltest.c
+index 4c31e1c0f..f5f7c5aba 100644
+--- a/src/plugins/preauth/test/cltest.c
++++ b/src/plugins/preauth/test/cltest.c
+@@ -1,7 +1,7 @@
+ /* -*- mode: c; c-basic-offset: 4; indent-tabs-mode: nil -*- */
+ /* plugins/preauth/test/cltest.c - Test clpreauth module */
+ /*
+- * Copyright (C) 2015 by the Massachusetts Institute of Technology.
++ * Copyright (C) 2015, 2017 by the Massachusetts Institute of Technology.
+  * All rights reserved.
+  *
+  * Redistribution and use in source and binary forms, with or without
+@@ -32,7 +32,7 @@
+ 
+ /*
+  * This module is used to test preauth interface features.  At this time, the
+- * clpreauth module does two things:
++ * clpreauth module does the following:
+  *
+  * - It decrypts a message from the initial KDC pa-data using the reply key and
+  *   prints it to stdout.  (The unencrypted message "no key" can also be
+@@ -45,17 +45,27 @@
+  *   it to the server, instructing the kdcpreauth module to assert one or more
+  *   space-separated authentication indicators.  (This string is sent on both
+  *   round trips if a second round trip is requested.)
++ *
++ * - If a KDC_ERR_ENCTYPE_NOSUPP error with e-data is received, it prints the
++ *   accompanying error padata and sends a follow-up request containing
++ *   "tryagain".
++ *
++ * - If the "fail_optimistic", "fail_2rt", or "fail_tryagain" gic options are
++ *   set, it fails with a recognizable error string at the requested point in
++ *   processing.
+  */
+ 
+ #include "k5-int.h"
+ #include <krb5/clpreauth_plugin.h>
+-
+-#define TEST_PA_TYPE -123
++#include "common.h"
+ 
+ static krb5_preauthtype pa_types[] = { TEST_PA_TYPE, 0 };
+ 
+ struct client_state {
+     char *indicators;
++    krb5_boolean fail_optimistic;
++    krb5_boolean fail_2rt;
++    krb5_boolean fail_tryagain;
+ };
+ 
+ struct client_request_state {
+@@ -70,6 +80,7 @@ test_init(krb5_context context, krb5_clpreauth_moddata *moddata_out)
+     st = malloc(sizeof(*st));
+     assert(st != NULL);
+     st->indicators = NULL;
++    st->fail_optimistic = st->fail_2rt = st->fail_tryagain = FALSE;
+     *moddata_out = (krb5_clpreauth_moddata)st;
+     return 0;
+ }
+@@ -114,7 +125,6 @@ test_process(krb5_context context, krb5_clpreauth_moddata moddata,
+     struct client_state *st = (struct client_state *)moddata;
+     struct client_request_state *reqst = (struct client_request_state *)modreq;
+     krb5_error_code ret;
+-    krb5_pa_data **list, *pa;
+     krb5_keyblock *k;
+     krb5_enc_data enc;
+     krb5_data plain;
+@@ -123,20 +133,18 @@ test_process(krb5_context context, krb5_clpreauth_moddata moddata,
+     if (pa_data->length == 0) {
+         /* This is an optimistic preauth test.  Send a recognizable padata
+          * value so the KDC knows not to expect a cookie. */
+-        list = k5calloc(2, sizeof(*list), &ret);
+-        assert(!ret);
+-        pa = k5alloc(sizeof(*pa), &ret);
+-        assert(!ret);
+-        pa->pa_type = TEST_PA_TYPE;
+-        pa->contents = (uint8_t *)strdup("optimistic");
+-        assert(pa->contents != NULL);
+-        pa->length = 10;
+-        list[0] = pa;
+-        list[1] = NULL;
+-        *out_pa_data = list;
++        if (st->fail_optimistic) {
++            k5_setmsg(context, KRB5_PREAUTH_FAILED, "induced optimistic fail");
++            return KRB5_PREAUTH_FAILED;
++        }
++        *out_pa_data = make_pa_list("optimistic", 10);
+         return 0;
+     } else if (reqst->second_round_trip) {
+         printf("2rt: %.*s\n", pa_data->length, pa_data->contents);
++        if (st->fail_2rt) {
++            k5_setmsg(context, KRB5_PREAUTH_FAILED, "induced 2rt fail");
++            return KRB5_PREAUTH_FAILED;
++        }
+     } else if (pa_data->length == 6 &&
+                memcmp(pa_data->contents, "no key", 6) == 0) {
+         printf("no key\n");
+@@ -157,17 +165,34 @@ test_process(krb5_context context, krb5_clpreauth_moddata moddata,
+     reqst->second_round_trip = TRUE;
+ 
+     indstr = (st->indicators != NULL) ? st->indicators : "";
+-    list = k5calloc(2, sizeof(*list), &ret);
+-    assert(!ret);
+-    pa = k5alloc(sizeof(*pa), &ret);
+-    assert(!ret);
+-    pa->pa_type = TEST_PA_TYPE;
+-    pa->contents = (uint8_t *)strdup(indstr);
+-    assert(pa->contents != NULL);
+-    pa->length = strlen(indstr);
+-    list[0] = pa;
+-    list[1] = NULL;
+-    *out_pa_data = list;
++    *out_pa_data = make_pa_list(indstr, strlen(indstr));
++    return 0;
++}
++
++static krb5_error_code
++test_tryagain(krb5_context context, krb5_clpreauth_moddata moddata,
++              krb5_clpreauth_modreq modreq, krb5_get_init_creds_opt *opt,
++              krb5_clpreauth_callbacks cb, krb5_clpreauth_rock rock,
++              krb5_kdc_req *request, krb5_data *enc_req, krb5_data *enc_prev,
++              krb5_preauthtype pa_type, krb5_error *error,
++              krb5_pa_data **padata, krb5_prompter_fct prompter,
++              void *prompter_data, krb5_pa_data ***padata_out)
++{
++    struct client_state *st = (struct client_state *)moddata;
++    int i;
++
++    *padata_out = NULL;
++    if (st->fail_tryagain) {
++        k5_setmsg(context, KRB5_PREAUTH_FAILED, "induced tryagain fail");
++        return KRB5_PREAUTH_FAILED;
++    }
++    if (error->error != KDC_ERR_ENCTYPE_NOSUPP)
++        return KRB5_PREAUTH_FAILED;
++    for (i = 0; padata[i] != NULL; i++) {
++        if (padata[i]->pa_type == TEST_PA_TYPE)
++            printf("tryagain: %.*s\n", padata[i]->length, padata[i]->contents);
++    }
++    *padata_out = make_pa_list("tryagain", 8);
+     return 0;
+ }
+ 
+@@ -181,6 +206,12 @@ test_gic_opt(krb5_context kcontext, krb5_clpreauth_moddata moddata,
+         free(st->indicators);
+         st->indicators = strdup(value);
+         assert(st->indicators != NULL);
++    } else if (strcmp(attr, "fail_optimistic") == 0) {
++        st->fail_optimistic = TRUE;
++    } else if (strcmp(attr, "fail_2rt") == 0) {
++        st->fail_2rt = TRUE;
++    } else if (strcmp(attr, "fail_tryagain") == 0) {
++        st->fail_tryagain = TRUE;
+     }
+     return 0;
+ }
+@@ -205,6 +236,7 @@ clpreauth_test_initvt(krb5_context context, int maj_ver,
+     vt->request_init = test_request_init;
+     vt->request_fini = test_request_fini;
+     vt->process = test_process;
++    vt->tryagain = test_tryagain;
+     vt->gic_opts = test_gic_opt;
+     return 0;
+ }
+diff --git a/src/plugins/preauth/test/common.c b/src/plugins/preauth/test/common.c
+new file mode 100644
+index 000000000..4d1f49dfa
+--- /dev/null
++++ b/src/plugins/preauth/test/common.c
+@@ -0,0 +1,61 @@
++/* -*- mode: c; c-basic-offset: 4; indent-tabs-mode: nil -*- */
++/* plugins/preauth/test/common.c - common functions for test preauth module */
++/*
++ * Copyright (C) 2017 by the Massachusetts Institute of Technology.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * * Redistributions of source code must retain the above copyright
++ *   notice, this list of conditions and the following disclaimer.
++ *
++ * * Redistributions in binary form must reproduce the above copyright
++ *   notice, this list of conditions and the following disclaimer in
++ *   the documentation and/or other materials provided with the
++ *   distribution.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
++ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
++ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
++ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
++ * OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "k5-int.h"
++#include "common.h"
++
++krb5_pa_data *
++make_pa(const char *contents, size_t len)
++{
++    krb5_error_code ret;
++    krb5_pa_data *pa;
++
++    pa = calloc(1, sizeof(*pa));
++    assert(pa != NULL);
++    pa->pa_type = TEST_PA_TYPE;
++    pa->contents = k5memdup(contents, len, &ret);
++    assert(!ret);
++    pa->length = len;
++    return pa;
++}
++
++/* Make a one-element padata list of type TEST_PA_TYPE. */
++krb5_pa_data **
++make_pa_list(const char *contents, size_t len)
++{
++    krb5_pa_data **list;
++
++    list = calloc(2, sizeof(*list));
++    assert(list != NULL);
++    list[0] = make_pa(contents, len);
++    return list;
++}
+diff --git a/src/plugins/preauth/test/common.h b/src/plugins/preauth/test/common.h
+new file mode 100644
+index 000000000..b748e0874
+--- /dev/null
++++ b/src/plugins/preauth/test/common.h
+@@ -0,0 +1,41 @@
++/* -*- mode: c; c-basic-offset: 4; indent-tabs-mode: nil -*- */
++/* plugins/preauth/test/common.h - Declarations for test preauth module */
++/*
++ * Copyright (C) 2017 by the Massachusetts Institute of Technology.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * * Redistributions of source code must retain the above copyright
++ *   notice, this list of conditions and the following disclaimer.
++ *
++ * * Redistributions in binary form must reproduce the above copyright
++ *   notice, this list of conditions and the following disclaimer in
++ *   the documentation and/or other materials provided with the
++ *   distribution.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
++ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
++ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
++ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
++ * OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#ifndef COMMON_H
++#define COMMON_H
++
++#define TEST_PA_TYPE -123
++
++krb5_pa_data *make_pa(const char *contents, size_t len);
++krb5_pa_data **make_pa_list(const char *contents, size_t len);
++
++#endif /* COMMON_H */
+diff --git a/src/plugins/preauth/test/deps b/src/plugins/preauth/test/deps
+index b48f00032..b1429e9e1 100644
+--- a/src/plugins/preauth/test/deps
++++ b/src/plugins/preauth/test/deps
+@@ -11,7 +11,7 @@ cltest.so cltest.po $(OUTPRE)cltest.$(OBJEXT): $(BUILDTOP)/include/autoconf.h \
+   $(top_srcdir)/include/krb5.h $(top_srcdir)/include/krb5/authdata_plugin.h \
+   $(top_srcdir)/include/krb5/clpreauth_plugin.h $(top_srcdir)/include/krb5/plugin.h \
+   $(top_srcdir)/include/port-sockets.h $(top_srcdir)/include/socket-utils.h \
+-  cltest.c
++  cltest.c common.h
+ kdctest.so kdctest.po $(OUTPRE)kdctest.$(OBJEXT): $(BUILDTOP)/include/autoconf.h \
+   $(BUILDTOP)/include/krb5/krb5.h $(BUILDTOP)/include/osconf.h \
+   $(BUILDTOP)/include/profile.h $(COM_ERR_DEPS) $(top_srcdir)/include/k5-buf.h \
+@@ -22,4 +22,14 @@ kdctest.so kdctest.po $(OUTPRE)kdctest.$(OBJEXT): $(BUILDTOP)/include/autoconf.h
+   $(top_srcdir)/include/krb5.h $(top_srcdir)/include/krb5/authdata_plugin.h \
+   $(top_srcdir)/include/krb5/kdcpreauth_plugin.h $(top_srcdir)/include/krb5/plugin.h \
+   $(top_srcdir)/include/port-sockets.h $(top_srcdir)/include/socket-utils.h \
+-  kdctest.c
++  common.h kdctest.c
++common.so common.po $(OUTPRE)common.$(OBJEXT): $(BUILDTOP)/include/autoconf.h \
++  $(BUILDTOP)/include/krb5/krb5.h $(BUILDTOP)/include/osconf.h \
++  $(BUILDTOP)/include/profile.h $(COM_ERR_DEPS) $(top_srcdir)/include/k5-buf.h \
++  $(top_srcdir)/include/k5-err.h $(top_srcdir)/include/k5-gmt_mktime.h \
++  $(top_srcdir)/include/k5-int-pkinit.h $(top_srcdir)/include/k5-int.h \
++  $(top_srcdir)/include/k5-platform.h $(top_srcdir)/include/k5-plugin.h \
++  $(top_srcdir)/include/k5-thread.h $(top_srcdir)/include/k5-trace.h \
++  $(top_srcdir)/include/krb5.h $(top_srcdir)/include/krb5/authdata_plugin.h \
++  $(top_srcdir)/include/krb5/plugin.h $(top_srcdir)/include/port-sockets.h \
++  $(top_srcdir)/include/socket-utils.h common.c common.h
+diff --git a/src/plugins/preauth/test/kdctest.c b/src/plugins/preauth/test/kdctest.c
+index 026dc680d..66b77969a 100644
+--- a/src/plugins/preauth/test/kdctest.c
++++ b/src/plugins/preauth/test/kdctest.c
+@@ -1,7 +1,7 @@
+ /* -*- mode: c; c-basic-offset: 4; indent-tabs-mode: nil -*- */
+ /* plugins/preauth/test/kdctest.c - Test kdcpreauth module */
+ /*
+- * Copyright (C) 2015 by the Massachusetts Institute of Technology.
++ * Copyright (C) 2015, 2017 by the Massachusetts Institute of Technology.
+  * All rights reserved.
+  *
+  * Redistribution and use in source and binary forms, with or without
+@@ -40,10 +40,20 @@
+  *   key; the encrypted message "no attr" is sent if there is no string
+  *   attribute.)  It also sets a cookie containing "method-data".
+  *
+- * - It retrieves the "2rt" attribute from the client principal.  If set, the
+- *   verify method sends the client a KDC_ERR_MORE_PREAUTH_DATA_REQUIRED error
+- *   with the contents of the 2rt attribute as pa-data, and sets a cookie
+- *   containing "more".
++ * - If the "err" attribute is set on the client principal, the verify method
++ *   returns an KDC_ERR_ETYPE_NOSUPP error on the first try, with the contents
++ *   of the err attribute as pa-data.  If the client tries again with the
++ *   padata value "tryagain", the verify method preuthenticates successfully
++ *   with no additional processing.
++ *
++ * - If the "failopt" attribute is set on the client principal, the verify
++ *   method returns KDC_ERR_PREAUTH_FAILED on optimistic preauth attempts.
++ *
++ * - If the "2rt" attribute is set on client principal, the verify method sends
++ *   the client a KDC_ERR_MORE_PREAUTH_DATA_REQUIRED error with the contents of
++ *   the 2rt attribute as pa-data, and sets a cookie containing "more".  If the
++ *   "fail2rt" attribute is set on the client principal, the client's second
++ *   try results in a KDC_ERR_PREAUTH_FAILED error.
+  *
+  * - It receives a space-separated list from the clpreauth module and asserts
+  *   each string as an authentication indicator.  It always succeeds in
+@@ -52,6 +62,7 @@
+ 
+ #include "k5-int.h"
+ #include <krb5/kdcpreauth_plugin.h>
++#include "common.h"
+ 
+ #define TEST_PA_TYPE -123
+ 
+@@ -73,11 +84,6 @@ test_edata(krb5_context context, krb5_kdc_req *req,
+ 
+     ret = cb->get_string(context, rock, "teststring", &attr);
+     assert(!ret);
+-    pa = k5alloc(sizeof(*pa), &ret);
+-    assert(!ret);
+-    if (pa == NULL)
+-        abort();
+-    pa->pa_type = TEST_PA_TYPE;
+     if (k != NULL) {
+         d = string2data((attr != NULL) ? attr : "no attr");
+         ret = krb5_c_encrypt_length(context, k->enctype, d.length, &enclen);
+@@ -86,12 +92,10 @@ test_edata(krb5_context context, krb5_kdc_req *req,
+         assert(!ret);
+         ret = krb5_c_encrypt(context, k, 1024, NULL, &d, &enc);
+         assert(!ret);
+-        pa->contents = (uint8_t *)enc.ciphertext.data;
+-        pa->length = enc.ciphertext.length;
++        pa = make_pa(enc.ciphertext.data, enc.ciphertext.length);
++        free(enc.ciphertext.data);
+     } else {
+-        pa->contents = (uint8_t *)strdup("no key");
+-        assert(pa->contents != NULL);
+-        pa->length = 6;
++        pa = make_pa("no key", 6);
+     }
+ 
+     /* Exercise setting a cookie information from the edata method. */
+@@ -111,12 +115,19 @@ test_verify(krb5_context context, krb5_data *req_pkt, krb5_kdc_req *request,
+             krb5_kdcpreauth_verify_respond_fn respond, void *arg)
+ {
+     krb5_error_code ret;
+-    krb5_boolean second_round_trip = FALSE;
+-    krb5_pa_data **list;
++    krb5_boolean second_round_trip = FALSE, optimistic = FALSE;
++    krb5_pa_data **list = NULL;
+     krb5_data cookie_data, d;
+-    char *str, *ind, *attr, *toksave = NULL;
++    char *str, *ind, *toksave = NULL;
++    char *attr_err, *attr_2rt, *attr_fail2rt, *attr_failopt;
+ 
+-    ret = cb->get_string(context, rock, "2rt", &attr);
++    ret = cb->get_string(context, rock, "err", &attr_err);
++    assert(!ret);
++    ret = cb->get_string(context, rock, "2rt", &attr_2rt);
++    assert(!ret);
++    ret = cb->get_string(context, rock, "fail2rt", &attr_fail2rt);
++    assert(!ret);
++    ret = cb->get_string(context, rock, "failopt", &attr_failopt);
+     assert(!ret);
+ 
+     /* Check the incoming cookie value. */
+@@ -124,13 +135,36 @@ test_verify(krb5_context context, krb5_data *req_pkt, krb5_kdc_req *request,
+         /* Make sure we are seeing optimistic preauth and not a lost cookie. */
+         d = make_data(data->contents, data->length);
+         assert(data_eq_string(d, "optimistic"));
++        optimistic = TRUE;
+     } else if (data_eq_string(cookie_data, "more")) {
+         second_round_trip = TRUE;
+     } else {
+-        assert(data_eq_string(cookie_data, "method-data"));
++        assert(data_eq_string(cookie_data, "method-data") ||
++               data_eq_string(cookie_data, "err"));
+     }
+ 
+-    if (attr == NULL || second_round_trip) {
++    if (attr_err != NULL) {
++        d = make_data(data->contents, data->length);
++        if (data_eq_string(d, "tryagain")) {
++            /* Authenticate successfully. */
++            enc_tkt_reply->flags |= TKT_FLG_PRE_AUTH;
++        } else {
++            d = string2data("err");
++            ret = cb->set_cookie(context, rock, TEST_PA_TYPE, &d);
++            assert(!ret);
++            ret = KRB5KDC_ERR_ETYPE_NOSUPP;
++            list = make_pa_list(attr_err, strlen(attr_err));
++        }
++    } else if (attr_2rt != NULL && !second_round_trip) {
++        d = string2data("more");
++        ret = cb->set_cookie(context, rock, TEST_PA_TYPE, &d);
++        assert(!ret);
++        ret = KRB5KDC_ERR_MORE_PREAUTH_DATA_REQUIRED;
++        list = make_pa_list(attr_2rt, strlen(attr_2rt));
++    } else if ((attr_fail2rt != NULL && second_round_trip) ||
++               (attr_failopt != NULL && optimistic)) {
++        ret = KRB5KDC_ERR_PREAUTH_FAILED;
++    } else {
+         /* Parse and assert the indicators. */
+         str = k5memdup0(data->contents, data->length, &ret);
+         if (ret)
+@@ -142,21 +176,13 @@ test_verify(krb5_context context, krb5_data *req_pkt, krb5_kdc_req *request,
+         }
+         free(str);
+         enc_tkt_reply->flags |= TKT_FLG_PRE_AUTH;
+-        cb->free_string(context, rock, attr);
+-        (*respond)(arg, 0, NULL, NULL, NULL);
+-    } else {
+-        d = string2data("more");
+-        ret = cb->set_cookie(context, rock, TEST_PA_TYPE, &d);
+-        list = k5calloc(2, sizeof(*list), &ret);
+-        assert(!ret);
+-        list[0] = k5alloc(sizeof(*list[0]), &ret);
+-        assert(!ret);
+-        list[0]->pa_type = TEST_PA_TYPE;
+-        list[0]->contents = (uint8_t *)attr;
+-        list[0]->length = strlen(attr);
+-        (*respond)(arg, KRB5KDC_ERR_MORE_PREAUTH_DATA_REQUIRED, NULL, list,
+-                   NULL);
+     }
++
++    cb->free_string(context, rock, attr_err);
++    cb->free_string(context, rock, attr_2rt);
++    cb->free_string(context, rock, attr_fail2rt);
++    cb->free_string(context, rock, attr_failopt);
++    (*respond)(arg, ret, NULL, list, NULL);
+ }
+ 
+ static krb5_error_code
+diff --git a/src/tests/icred.c b/src/tests/icred.c
+index 071f91c80..55f929cd7 100644
+--- a/src/tests/icred.c
++++ b/src/tests/icred.c
+@@ -35,8 +35,8 @@
+  * it is very simplistic, but it can be extended as needed.
+  */
+ 
++#include "k5-platform.h"
+ #include <krb5.h>
+-#include <stdio.h>
+ 
+ static krb5_context ctx;
+ 
+@@ -59,29 +59,64 @@ main(int argc, char **argv)
+     const char *princstr, *password;
+     krb5_principal client;
+     krb5_init_creds_context icc;
++    krb5_get_init_creds_opt *opt;
+     krb5_creds creds;
+-
+-    if (argc != 3) {
+-        fprintf(stderr, "Usage: icred princname password\n");
+-        exit(1);
+-    }
+-    princstr = argv[1];
+-    password = argv[2];
++    krb5_boolean stepwise = FALSE;
++    krb5_preauthtype ptypes[64];
++    int c, nptypes = 0;
++    char *val;
+ 
+     check(krb5_init_context(&ctx));
++    check(krb5_get_init_creds_opt_alloc(ctx, &opt));
++
++    while ((c = getopt(argc, argv, "so:X:")) != -1) {
++        switch (c) {
++        case 's':
++            stepwise = TRUE;
++            break;
++        case 'o':
++            assert(nptypes < 64);
++            ptypes[nptypes++] = atoi(optarg);
++            break;
++        case 'X':
++            val = strchr(optarg, '=');
++            if (val != NULL)
++                *val++ = '\0';
++            else
++                val = "yes";
++            check(krb5_get_init_creds_opt_set_pa(ctx, opt, optarg, val));
++            break;
++        default:
++            abort();
++        }
++    }
++
++    argc -= optind;
++    argv += optind;
++    if (argc != 2)
++        abort();
++    princstr = argv[0];
++    password = argv[1];
++
+     check(krb5_parse_name(ctx, princstr, &client));
+ 
+-    /* Try once with the traditional interface. */
+-    check(krb5_get_init_creds_password(ctx, &creds, client, password, NULL,
+-                                       NULL, 0, NULL, NULL));
+-    krb5_free_cred_contents(ctx, &creds);
++    if (nptypes > 0)
++        krb5_get_init_creds_opt_set_preauth_list(opt, ptypes, nptypes);
+ 
+-    /* Try again with the step interface. */
+-    check(krb5_init_creds_init(ctx, client, NULL, NULL, 0, NULL, &icc));
+-    check(krb5_init_creds_set_password(ctx, icc, password));
+-    check(krb5_init_creds_get(ctx, icc));
+-    krb5_init_creds_free(ctx, icc);
++    if (stepwise) {
++        /* Use the stepwise interface. */
++        check(krb5_init_creds_init(ctx, client, NULL, NULL, 0, NULL, &icc));
++        check(krb5_init_creds_set_password(ctx, icc, password));
++        check(krb5_init_creds_get(ctx, icc));
++        krb5_init_creds_free(ctx, icc);
++    } else {
++        /* Use the traditional one-shot interface. */
++        check(krb5_get_init_creds_password(ctx, &creds, client, password, NULL,
++                                           NULL, 0, NULL, opt));
++        krb5_free_cred_contents(ctx, &creds);
++    }
+ 
++    krb5_get_init_creds_opt_free(ctx, opt);
+     krb5_free_principal(ctx, client);
+     krb5_free_context(ctx);
+     return 0;
+diff --git a/src/tests/t_general.py b/src/tests/t_general.py
+index 6d523fe45..b16cffa37 100755
+--- a/src/tests/t_general.py
++++ b/src/tests/t_general.py
+@@ -30,6 +30,7 @@ conf={'plugins': {'pwqual': {'disable': 'empty'}}}
+ realm = K5Realm(create_user=False, create_host=False, krb5_conf=conf)
+ realm.run([kadminl, 'addprinc', '-pw', '', 'user'])
+ realm.run(['./icred', 'user', ''])
++realm.run(['./icred', '-s', 'user', ''])
+ realm.stop()
+ 
+ realm = K5Realm(create_host=False)
+diff --git a/src/tests/t_pkinit.py b/src/tests/t_pkinit.py
+index 38424932b..c25475096 100755
+--- a/src/tests/t_pkinit.py
++++ b/src/tests/t_pkinit.py
+@@ -176,14 +176,20 @@ realm.klist(realm.user_princ)
+ 
+ # Test a DH parameter renegotiation by temporarily setting a 4096-bit
+ # minimum on the KDC.  (Preauth type 16 is PKINIT PA_PK_AS_REQ;
+-# 133 is FAST PA-FX-COOKIE.)
++# 109 is PKINIT TD_DH_PARAMETERS; 133 is FAST PA-FX-COOKIE.)
+ minbits_kdc_conf = {'realms': {'$realm': {'pkinit_dh_min_bits': '4096'}}}
+ minbits_env = realm.special_env('restrict', True, kdc_conf=minbits_kdc_conf)
+ realm.stop_kdc()
+ realm.start_kdc(env=minbits_env)
+-expected_trace = ('Key parameters not accepted',
+-                  'Preauth tryagain input types',
++expected_trace = ('Sending unauthenticated request',
++                  '/Additional pre-authentication required',
++                  'Preauthenticating using KDC method data',
++                  'Preauth module pkinit (16) (real) returned: 0/Success',
++                  'Produced preauth for next request: 133, 16',
++                  '/Key parameters not accepted',
++                  'Preauth tryagain input types (16): 109, 133',
+                   'trying again with KDC-provided parameters',
++                  'Preauth module pkinit (16) tryagain returned: 0/Success',
+                   'Followup preauth for next request: 16, 133')
+ realm.kinit(realm.user_princ,
+             flags=['-X', 'X509_user_identity=%s' % file_identity],
+diff --git a/src/tests/t_preauth.py b/src/tests/t_preauth.py
+index 9b6da5a96..7d4d299dc 100644
+--- a/src/tests/t_preauth.py
++++ b/src/tests/t_preauth.py
+@@ -18,11 +18,161 @@ out = realm.run([kinit, 'nokeyuser'], input=password('user')+'\n',
+ if 'no key' not in out:
+     fail('Expected "no key" message not in kinit output')
+ 
+-# Exercise KDC_ERR_MORE_PREAUTH_DATA_REQUIRED and secure cookies.
++# Preauth type -123 is the test preauth module type; 133 is FAST
++# PA-FX-COOKIE; 2 is encrypted timestamp.
++
++# Test normal preauth flow.
++expected_trace = ('Sending unauthenticated request',
++                  '/Additional pre-authentication required',
++                  'Preauthenticating using KDC method data',
++                  'Processing preauth types:',
++                  'Preauth module test (-123) (real) returned: 0/Success',
++                  'Produced preauth for next request: 133, -123',
++                  'Decrypted AS reply')
++realm.run(['./icred', realm.user_princ, password('user')],
++          expected_msg='testval', expected_trace=expected_trace)
++
++# Test successful optimistic preauth.
++expected_trace = ('Attempting optimistic preauth',
++                  'Processing preauth types: -123',
++                  'Preauth module test (-123) (real) returned: 0/Success',
++                  'Produced preauth for next request: -123',
++                  'Decrypted AS reply')
++realm.run(['./icred', '-o', '-123', realm.user_princ, password('user')],
++          expected_trace=expected_trace)
++
++# Test optimistic preauth failing on client, followed by successful
++# preauth using the same module.
++expected_trace = ('Attempting optimistic preauth',
++                  'Processing preauth types: -123',
++                  '/induced optimistic fail',
++                  'Sending unauthenticated request',
++                  '/Additional pre-authentication required',
++                  'Preauthenticating using KDC method data',
++                  'Processing preauth types:',
++                  'Preauth module test (-123) (real) returned: 0/Success',
++                  'Produced preauth for next request: 133, -123',
++                  'Decrypted AS reply')
++realm.run(['./icred', '-o', '-123', '-X', 'fail_optimistic', realm.user_princ,
++           password('user')], expected_msg='testval',
++          expected_trace=expected_trace)
++
++# Test optimistic preauth failing on KDC, followed by successful preauth
++# using the same module.
++realm.run([kadminl, 'setstr', realm.user_princ, 'failopt', 'yes'])
++expected_trace = ('Attempting optimistic preauth',
++                  'Processing preauth types: -123',
++                  'Preauth module test (-123) (real) returned: 0/Success',
++                  'Produced preauth for next request: -123',
++                  '/Preauthentication failed',
++                  'Preauthenticating using KDC method data',
++                  'Processing preauth types:',
++                  'Preauth module test (-123) (real) returned: 0/Success',
++                  'Produced preauth for next request: 133, -123',
++                  'Decrypted AS reply')
++realm.run(['./icred', '-o', '-123', realm.user_princ, password('user')],
++          expected_msg='testval', expected_trace=expected_trace)
++realm.run([kadminl, 'delstr', realm.user_princ, 'failopt'])
++
++# Test KDC_ERR_MORE_PREAUTH_DATA_REQUIRED and secure cookies.
+ realm.run([kadminl, 'setstr', realm.user_princ, '2rt', 'secondtrip'])
+-out = realm.run([kinit, realm.user_princ], input=password('user')+'\n')
+-if '2rt: secondtrip' not in out:
+-    fail('multi round-trip cookie test')
++expected_trace = ('Sending unauthenticated request',
++                  '/Additional pre-authentication required',
++                  'Preauthenticating using KDC method data',
++                  'Processing preauth types:',
++                  'Preauth module test (-123) (real) returned: 0/Success',
++                  'Produced preauth for next request: 133, -123',
++                  '/More preauthentication data is required',
++                  'Continuing preauth mech -123',
++                  'Processing preauth types: -123, 133',
++                  'Produced preauth for next request: 133, -123',
++                  'Decrypted AS reply')
++realm.run(['./icred', realm.user_princ, password('user')],
++          expected_msg='2rt: secondtrip', expected_trace=expected_trace)
++
++# Test client-side failure after KDC_ERR_MORE_PREAUTH_DATA_REQUIRED,
++# falling back to encrypted timestamp.
++expected_trace = ('Sending unauthenticated request',
++                  '/Additional pre-authentication required',
++                  'Preauthenticating using KDC method data',
++                  'Processing preauth types:',
++                  'Preauth module test (-123) (real) returned: 0/Success',
++                  'Produced preauth for next request: 133, -123',
++                  '/More preauthentication data is required',
++                  'Continuing preauth mech -123',
++                  'Processing preauth types: -123, 133',
++                  '/induced 2rt fail',
++                  'Preauthenticating using KDC method data',
++                  'Processing preauth types:',
++                  'Encrypted timestamp (for ',
++                  'module encrypted_timestamp (2) (real) returned: 0/Success',
++                  'Produced preauth for next request: 133, 2',
++                  'Decrypted AS reply')
++realm.run(['./icred', '-X', 'fail_2rt', realm.user_princ, password('user')],
++          expected_msg='2rt: secondtrip', expected_trace=expected_trace)
++
++# Test KDC-side failure after KDC_ERR_MORE_PREAUTH_DATA_REQUIRED,
++# falling back to encrypted timestamp.
++realm.run([kadminl, 'setstr', realm.user_princ, 'fail2rt', 'yes'])
++expected_trace = ('Sending unauthenticated request',
++                  '/Additional pre-authentication required',
++                  'Preauthenticating using KDC method data',
++                  'Processing preauth types:',
++                  'Preauth module test (-123) (real) returned: 0/Success',
++                  'Produced preauth for next request: 133, -123',
++                  '/More preauthentication data is required',
++                  'Continuing preauth mech -123',
++                  'Processing preauth types: -123, 133',
++                  'Preauth module test (-123) (real) returned: 0/Success',
++                  'Produced preauth for next request: 133, -123',
++                  '/Preauthentication failed',
++                  'Preauthenticating using KDC method data',
++                  'Processing preauth types:',
++                  'Encrypted timestamp (for ',
++                  'module encrypted_timestamp (2) (real) returned: 0/Success',
++                  'Produced preauth for next request: 133, 2',
++                  'Decrypted AS reply')
++realm.run(['./icred', realm.user_princ, password('user')],
++          expected_msg='2rt: secondtrip', expected_trace=expected_trace)
++realm.run([kadminl, 'delstr', realm.user_princ, 'fail2rt'])
++
++# Test tryagain flow by inducing a KDC_ERR_ENCTYPE_NOSUPP error on the KDC.
++realm.run([kadminl, 'setstr', realm.user_princ, 'err', 'testagain'])
++expected_trace = ('Sending unauthenticated request',
++                  '/Additional pre-authentication required',
++                  'Preauthenticating using KDC method data',
++                  'Processing preauth types:',
++                  'Preauth module test (-123) (real) returned: 0/Success',
++                  'Produced preauth for next request: 133, -123',
++                  '/KDC has no support for encryption type',
++                  'Recovering from KDC error 14 using preauth mech -123',
++                  'Preauth tryagain input types (-123): -123, 133',
++                  'Preauth module test (-123) tryagain returned: 0/Success',
++                  'Followup preauth for next request: -123, 133',
++                  'Decrypted AS reply')
++realm.run(['./icred', realm.user_princ, password('user')],
++          expected_msg='tryagain: testagain', expected_trace=expected_trace)
++
++# Test a client-side tryagain failure, falling back to encrypted
++# timestamp.
++expected_trace = ('Sending unauthenticated request',
++                  '/Additional pre-authentication required',
++                  'Preauthenticating using KDC method data',
++                  'Processing preauth types:',
++                  'Preauth module test (-123) (real) returned: 0/Success',
++                  'Produced preauth for next request: 133, -123',
++                  '/KDC has no support for encryption type',
++                  'Recovering from KDC error 14 using preauth mech -123',
++                  'Preauth tryagain input types (-123): -123, 133',
++                  '/induced tryagain fail',
++                  'Preauthenticating using KDC method data',
++                  'Processing preauth types:',
++                  'Encrypted timestamp (for ',
++                  'module encrypted_timestamp (2) (real) returned: 0/Success',
++                  'Produced preauth for next request: 133, 2',
++                  'Decrypted AS reply')
++realm.run(['./icred', '-X', 'fail_tryagain', realm.user_princ,
++           password('user')], expected_trace=expected_trace)
+ 
+ # Test that multiple stepwise initial creds operations can be
+ # performed with the same krb5_context, with proper tracking of
