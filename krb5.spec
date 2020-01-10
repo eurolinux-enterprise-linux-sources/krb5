@@ -12,7 +12,7 @@
 Summary: The Kerberos network authentication system
 Name: krb5
 Version: 1.15.1
-Release: 34%{?dist}
+Release: 37%{?dist}
 
 # - Maybe we should explode from the now-available-to-everybody tarball instead?
 # http://web.mit.edu/kerberos/dist/krb5/1.13/krb5-1.13.2-signed.tar
@@ -121,7 +121,12 @@ Patch206: Add-test-cases-for-preauth-fallback-behavior.patch
 Patch207: Include-preauth-name-in-trace-output-if-possible.patch
 Patch208: Add-vector-support-to-k5_sha256.patch
 Patch209: Use-SHA-256-instead-of-MD5-for-audit-ticket-IDs.patch
-Patch210: In-FIPS-mode-add-plaintext-fallback-for-RC4-usages-a.patch
+Patch211: In-FIPS-mode-add-plaintext-fallback-for-RC4-usages-a.patch
+Patch212: Fix-bugs-with-concurrent-use-of-MEMORY-ccaches.patch
+Patch213: Don-t-include-all-MEMORY-ccaches-in-collection.patch
+Patch214: Add-libkrb5support-hex-functions-and-tests.patch
+Patch215: Add-a-hash-table-implementation-to-libkrb5support.patch
+Patch216: Use-a-hash-table-for-MEMORY-ccache-resolution.patch
 
 License: MIT
 URL: http://web.mit.edu/kerberos/www/
@@ -376,7 +381,12 @@ ONLY by kerberos itself. Do not depend on this package.
 %patch207 -p1 -b .Include-preauth-name-in-trace-output-if-possible
 %patch208 -p1 -b .Add-vector-support-to-k5_sha256
 %patch209 -p1 -b .Use-SHA-256-instead-of-MD5-for-audit-ticket-IDs
-%patch210 -p1 -b .In-FIPS-mode-add-plaintext-fallback-for-RC4-usages-a
+%patch211 -p1 -b .In-FIPS-mode-add-plaintext-fallback-for-RC4-usages-a
+%patch212 -p1 -b .Fix-bugs-with-concurrent-use-of-MEMORY-ccaches
+%patch213 -p1 -b .Don-t-include-all-MEMORY-ccaches-in-collection
+%patch214 -p1 -b .Add-libkrb5support-hex-functions-and-tests
+%patch215 -p1 -b .Add-a-hash-table-implementation-to-libkrb5support
+%patch216 -p1 -b .Use-a-hash-table-for-MEMORY-ccache-resolution
 
 ln NOTICE LICENSE
 
@@ -460,7 +470,7 @@ CPPFLAGS="`echo $DEFINES $INCLUDES`"
 	--with-dirsrv-account-locking \
 %endif
 	--enable-pkinit \
-	--with-crypto-impl=openssl \
+	--with-crypto-impl=builtin \
 	--with-pkinit-crypto-impl=openssl \
 	--with-tls-impl=openssl \
 	--with-system-verto \
@@ -882,6 +892,18 @@ exit 0
 %{_libdir}/libkadm5srv_mit.so.*
 
 %changelog
+* Tue Dec 18 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-37
+- Bring back builtin crypto (openssl broke too many FIPS setups)
+- Resolves: #1657890
+
+* Mon Dec 17 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-36
+- Clean up MEMORY ccache behavior to match upstream more closely
+- Resolves: #1657890
+
+* Tue Dec 11 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-35
+- Fix bugs with concurrent use of MEMORY ccaches
+- Resolves: #1657890
+
 * Wed Aug 01 2018 Robbie Harwood <rharwood@redhat.com> - 1.15.1-34
 - In FIPS mode, add plaintext fallback for RC4 usages and taint
 - Resolves: #1570600

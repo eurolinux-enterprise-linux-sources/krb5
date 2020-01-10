@@ -1,0 +1,91 @@
+From 763420ead602d5b17b27f6bad07fdb1cc2f61119 Mon Sep 17 00:00:00 2001
+From: Greg Hudson <ghudson@mit.edu>
+Date: Wed, 1 Aug 2018 15:53:12 -0400
+Subject: [PATCH] Don't include all MEMORY ccaches in collection
+
+In the MEMORY ccache implementation, only yield a cache in the
+per-type cursor if it is the context default cache, matching the
+behavior of FILE after commit 45360c9688ca963f75a2480f2cf818424fc3dc7b
+(ticket 6955).
+
+ticket: 8720 (new)
+(cherry picked from commit 49bb627fed70c5258c151c5135ac3d95ed1ee55d)
+---
+ src/lib/krb5/ccache/cc_memory.c | 25 ++++++++++---------------
+ src/lib/krb5/ccache/t_cccol.py  |  7 ++++---
+ 2 files changed, 14 insertions(+), 18 deletions(-)
+
+diff --git a/src/lib/krb5/ccache/cc_memory.c b/src/lib/krb5/ccache/cc_memory.c
+index 8cdaff7fb..cfd5c6389 100644
+--- a/src/lib/krb5/ccache/cc_memory.c
++++ b/src/lib/krb5/ccache/cc_memory.c
+@@ -132,7 +132,7 @@ struct mcc_cursor {
+ 
+ /* Iterator over memory caches.  */
+ struct krb5_mcc_ptcursor_data {
+-    struct krb5_mcc_list_node *cur;
++    krb5_boolean first;
+ };
+ 
+ k5_cc_mutex krb5int_mcc_mutex = K5_CC_MUTEX_PARTIAL_INITIALIZER;
+@@ -693,9 +693,7 @@ krb5_mcc_ptcursor_new(
+         return ENOMEM;
+     }
+     n->data = cdata;
+-    k5_cc_mutex_lock(context, &krb5int_mcc_mutex);
+-    cdata->cur = mcc_head;
+-    k5_cc_mutex_unlock(context, &krb5int_mcc_mutex);
++    cdata->first = TRUE;
+     *cursor = n;
+     return 0;
+ }
+@@ -707,22 +705,19 @@ krb5_mcc_ptcursor_next(
+     krb5_ccache *ccache)
+ {
+     struct krb5_mcc_ptcursor_data *cdata = NULL;
++    const char *defname;
+ 
+     *ccache = NULL;
+     cdata = cursor->data;
+-    if (cdata->cur == NULL)
++    if (!cdata->first)
++        return 0;
++    cdata->first = FALSE;
++
++    defname = krb5_cc_default_name(context);
++    if (defname == NULL || strncmp(defname, "MEMORY:", 7) != 0)
+         return 0;
+ 
+-    *ccache = malloc(sizeof(**ccache));
+-    if (*ccache == NULL)
+-        return ENOMEM;
+-
+-    (*ccache)->ops = &krb5_mcc_ops;
+-    (*ccache)->data = cdata->cur->cache;
+-    k5_cc_mutex_lock(context, &krb5int_mcc_mutex);
+-    cdata->cur = cdata->cur->next;
+-    k5_cc_mutex_unlock(context, &krb5int_mcc_mutex);
+-    return 0;
++    return krb5_cc_resolve(context, defname, ccache);
+ }
+ 
+ static krb5_error_code KRB5_CALLCONV
+diff --git a/src/lib/krb5/ccache/t_cccol.py b/src/lib/krb5/ccache/t_cccol.py
+index f7f178564..c6d5f514d 100755
+--- a/src/lib/krb5/ccache/t_cccol.py
++++ b/src/lib/krb5/ccache/t_cccol.py
+@@ -97,10 +97,11 @@ if test_keyring:
+ 
+ mfoo = 'MEMORY:foo'
+ mbar = 'MEMORY:bar'
+-cursor_test('filemem', [fccname, mfoo, mbar], [fccname, mfoo, mbar])
+-cursor_test('dirmem', [dccname, mfoo], [duser, dalice, dbob, mfoo])
++cursor_test('filemem', [fccname, mfoo], [fccname])
++cursor_test('dirmem', [dccname, mfoo], [duser, dalice, dbob])
++cursor_test('mem', [mfoo, mbar], [mfoo])
+ if test_keyring:
+-    cursor_test('keyringmem', [krccname, mfoo], [kruser, kralice, krbob, mfoo])
++    cursor_test('keyringmem', [krccname, mfoo], [kruser, kralice, krbob])
+ 
+ # Test krb5_cccol_have_content.
+ realm.run(['./t_cccursor', dccname, 'CONTENT'])
