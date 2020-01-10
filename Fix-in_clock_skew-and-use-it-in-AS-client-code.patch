@@ -8,6 +8,7 @@ implicitly relying on a local variable.  Use it in
 get_in_tkt.c:verify_as_reply().
 
 (cherry picked from commit 28a07a6461bb443b7fa75cc5cb859ad0db4cbb5a)
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/lib/krb5/krb/gc_via_tkt.c | 2 +-
  src/lib/krb5/krb/get_in_tkt.c | 4 ++--

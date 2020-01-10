@@ -3,6 +3,7 @@ From: Robbie Harwood <rharwood@redhat.com>
 Date: Wed, 4 Jan 2017 13:18:18 -0500
 Subject: [PATCH] krb5-1.15-beta1-buildconf.patch
 
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/build-tools/krb5-config.in | 7 +++++++
  src/config/pre.in              | 2 +-

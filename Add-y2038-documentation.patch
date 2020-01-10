@@ -5,6 +5,7 @@ Subject: [PATCH] Add y2038 documentation
 
 ticket: 8352
 (cherry picked from commit 85d64c43dbf7a7faa56a1999494cdfa49e8bd2c9)
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  doc/appdev/index.rst |  1 +
  doc/appdev/y2038.rst | 28 ++++++++++++++++++++++++++++

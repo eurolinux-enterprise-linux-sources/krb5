@@ -7,6 +7,7 @@ Add a kdcpreauth callback to returns the canonicalized client principal.
 
 ticket: 8570 (new)
 (cherry picked from commit a84f39ec30f3deeda7836da6e8b3d8dcf7a045b1)
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/include/krb5/kdcpreauth_plugin.h | 6 ++++++
  src/kdc/kdc_preauth.c                | 9 ++++++++-

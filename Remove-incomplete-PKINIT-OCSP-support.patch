@@ -10,6 +10,7 @@ initialization instead of silently ignoring the realm entirely.
 
 ticket: 8603 (new)
 (cherry picked from commit 3ff426b9048a8024e5c175256c63cd0ad0572320)
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  doc/admin/conf_files/kdc_conf.rst            |  3 ---
  src/man/kdc.conf.man                         |  3 ---

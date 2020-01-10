@@ -19,30 +19,31 @@ Also authored by Matt Rogers <mrogers@redhat.com>.
 ticket: 8606 (new)
 (cherry picked from commit d0969f6a8170344031ef58fd2a161190f1edfb96)
 [rharwood@redhat.com: mention but do not use kadm_auth]
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
- doc/plugindev/index.rst                       |   1 +
- doc/plugindev/kdcpolicy.rst                   |  24 ++
- src/Makefile.in                               |   1 +
- src/configure.in                              |   1 +
- src/include/Makefile.in                       |   1 +
- src/include/k5-int.h                          |   4 +-
- src/include/k5-trace.h                        |   5 +
- src/include/krb5/kdcpolicy_plugin.h           | 128 +++++++++
- src/kdc/do_as_req.c                           |   7 +
- src/kdc/do_tgs_req.c                          |   6 +
- src/kdc/kdc_util.c                            |   7 -
- src/kdc/kdc_util.h                            |  11 -
- src/kdc/main.c                                |   8 +
- src/kdc/policy.c                              | 267 +++++++++++++++---
- src/kdc/policy.h                              |  19 +-
- src/kdc/tgs_policy.c                          |   6 -
- src/lib/krb5/krb/plugin.c                     |   4 +-
- src/plugins/kdcpolicy/test/Makefile.in        |  20 ++
- src/plugins/kdcpolicy/test/deps               |   0
- src/plugins/kdcpolicy/test/main.c             | 111 ++++++++
- .../kdcpolicy/test/policy_test.exports        |   1 +
- src/tests/Makefile.in                         |   1 +
- src/tests/t_kdcpolicy.py                      |  57 ++++
+ doc/plugindev/index.rst                        |   1 +
+ doc/plugindev/kdcpolicy.rst                    |  24 +++
+ src/Makefile.in                                |   1 +
+ src/configure.in                               |   1 +
+ src/include/Makefile.in                        |   1 +
+ src/include/k5-int.h                           |   4 +-
+ src/include/k5-trace.h                         |   5 +
+ src/include/krb5/kdcpolicy_plugin.h            | 128 ++++++++++++
+ src/kdc/do_as_req.c                            |   7 +
+ src/kdc/do_tgs_req.c                           |   6 +
+ src/kdc/kdc_util.c                             |   7 -
+ src/kdc/kdc_util.h                             |  11 -
+ src/kdc/main.c                                 |   8 +
+ src/kdc/policy.c                               | 267 +++++++++++++++++++++----
+ src/kdc/policy.h                               |  19 +-
+ src/kdc/tgs_policy.c                           |   6 -
+ src/lib/krb5/krb/plugin.c                      |   4 +-
+ src/plugins/kdcpolicy/test/Makefile.in         |  20 ++
+ src/plugins/kdcpolicy/test/deps                |   0
+ src/plugins/kdcpolicy/test/main.c              | 111 ++++++++++
+ src/plugins/kdcpolicy/test/policy_test.exports |   1 +
+ src/tests/Makefile.in                          |   1 +
+ src/tests/t_kdcpolicy.py                       |  57 ++++++
  23 files changed, 616 insertions(+), 74 deletions(-)
  create mode 100644 doc/plugindev/kdcpolicy.rst
  create mode 100644 src/include/krb5/kdcpolicy_plugin.h

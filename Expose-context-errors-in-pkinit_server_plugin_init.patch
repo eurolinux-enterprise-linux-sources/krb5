@@ -18,6 +18,7 @@ target_version: 1.16
 tags: pullup
 
 (cherry picked from commit 225aab3540c13c6289b22022d5e110f6fc26151d)
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/plugins/preauth/pkinit/pkinit_srv.c   | 19 +++++++++++++------
  src/plugins/preauth/pkinit/pkinit_trace.h |  3 +++

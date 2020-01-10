@@ -11,6 +11,7 @@ substrings in the trace output.
 
 (cherry picked from commit 8bb5fce69a4aa6c3082fa7def66a93974e10e17a)
 [rharwood@redhat.com: back out .gitignore]
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/config/post.in |  2 +-
  src/util/k5test.py | 37 ++++++++++++++++++++++++++++++++++---

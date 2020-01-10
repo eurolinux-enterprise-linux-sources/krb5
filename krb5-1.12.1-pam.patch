@@ -3,12 +3,13 @@ From: Robbie Harwood <rharwood@redhat.com>
 Date: Mon, 18 Apr 2016 15:57:38 -0400
 Subject: [PATCH] krb5-1.12.1-pam.patch
 
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
- src/aclocal.m4              |  67 +++++++
+ src/aclocal.m4              |  67 ++++++++
  src/clients/ksu/Makefile.in |   8 +-
- src/clients/ksu/main.c      |  88 +++++++-
- src/clients/ksu/pam.c       | 389 ++++++++++++++++++++++++++++++++++++
- src/clients/ksu/pam.h       |  57 ++++++
+ src/clients/ksu/main.c      |  88 +++++++++-
+ src/clients/ksu/pam.c       | 389 ++++++++++++++++++++++++++++++++++++++++++++
+ src/clients/ksu/pam.h       |  57 +++++++
  src/configure.in            |   2 +
  6 files changed, 608 insertions(+), 3 deletions(-)
  create mode 100644 src/clients/ksu/pam.c

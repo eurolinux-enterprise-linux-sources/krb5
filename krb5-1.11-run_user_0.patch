@@ -3,6 +3,7 @@ From: Robbie Harwood <rharwood@redhat.com>
 Date: Fri, 22 Apr 2016 10:03:22 -0400
 Subject: [PATCH] krb5-1.11-run_user_0.patch
 
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/lib/krb5/ccache/cc_dir.c | 14 ++++++++++++++
  1 file changed, 14 insertions(+)

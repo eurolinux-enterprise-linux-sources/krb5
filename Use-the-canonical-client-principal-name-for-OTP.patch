@@ -9,6 +9,7 @@ callback) instead of the request client principal.
 
 ticket: 8571 (new)
 (cherry picked from commit 6411398e35e343cdc4d2d103b079c4d3b9031f7e)
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/plugins/preauth/otp/main.c | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)

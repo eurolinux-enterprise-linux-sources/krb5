@@ -3,6 +3,7 @@ From: Robbie Harwood <rharwood@redhat.com>
 Date: Fri, 22 Apr 2016 10:02:40 -0400
 Subject: [PATCH] krb5-1.9-debuginfo.patch
 
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/kadmin/cli/Makefile.in                 | 5 +++++
  src/plugins/kdb/ldap/ldap_util/Makefile.in | 2 +-

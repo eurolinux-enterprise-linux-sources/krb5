@@ -3,10 +3,11 @@ From: Robbie Harwood <rharwood@redhat.com>
 Date: Fri, 22 Apr 2016 10:01:15 -0400
 Subject: [PATCH] krb5-1.13-dirsrv-accountlock.patch
 
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
- src/aclocal.m4                                  |  9 +++++++++
- src/plugins/kdb/ldap/libkdb_ldap/ldap_misc.c    | 17 +++++++++++++++++
- .../kdb/ldap/libkdb_ldap/ldap_principal.c       |  3 +++
+ src/aclocal.m4                                    |  9 +++++++++
+ src/plugins/kdb/ldap/libkdb_ldap/ldap_misc.c      | 17 +++++++++++++++++
+ src/plugins/kdb/ldap/libkdb_ldap/ldap_principal.c |  3 +++
  3 files changed, 29 insertions(+)
 
 diff --git a/src/aclocal.m4 b/src/aclocal.m4

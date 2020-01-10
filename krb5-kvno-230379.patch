@@ -3,6 +3,7 @@ From: Robbie Harwood <rharwood@redhat.com>
 Date: Fri, 22 Apr 2016 10:03:07 -0400
 Subject: [PATCH] krb5-kvno-230379.patch
 
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/kadmin/ktutil/ktutil.c    | 5 +++--
  src/lib/krb5/keytab/kt_file.c | 2 +-

@@ -9,6 +9,7 @@ krb5int_trace().
 
 ticket: 8352
 (cherry picked from commit a60db180211a383bd382afe729e9309acb8dcf53)
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/kadmin/server/misc.c   | 2 +-
  src/kdc/dispatch.c         | 2 +-

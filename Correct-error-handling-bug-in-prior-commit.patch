@@ -9,6 +9,7 @@ possibly-modified alias.
 
 ticket: 8561
 (cherry picked from commit 7fdaef7c3280c86b5df25ae061fb04cc56d8620c)
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/plugins/preauth/pkinit/pkinit_crypto_openssl.c | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)

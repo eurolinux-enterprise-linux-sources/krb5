@@ -14,6 +14,7 @@ target_version: 1.15-next
 tags: pullup
 
 (cherry picked from commit b0a072e6431261734e7350996a363801f180e8ea)
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/lib/gssapi/krb5/context_time.c | 5 ++++-
  1 file changed, 4 insertions(+), 1 deletion(-)

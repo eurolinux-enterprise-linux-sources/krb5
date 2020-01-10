@@ -18,6 +18,7 @@ initialize (my mistake when revising the commit, noted by rharwood).
 
 ticket: 8606
 (cherry picked from commit 09acbd91efc6df54e1572285ffc94c6acb3a9113)
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/kdc/policy.c                  |  2 +-
  src/plugins/kdcpolicy/test/main.c | 10 +++++-----

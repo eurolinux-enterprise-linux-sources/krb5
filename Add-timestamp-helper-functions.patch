@@ -10,6 +10,7 @@ indicating how third-party code should use it safely.
 
 ticket: 8352
 (cherry picked from commit 58e9155060cd93b1a7557e37fbc9b077b76465c2)
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/include/k5-int.h      | 31 +++++++++++++++++++++++++++++++
  src/include/krb5/krb5.hin |  9 +++++++++

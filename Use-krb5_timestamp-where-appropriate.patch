@@ -7,6 +7,7 @@ Where krb5_int32 is used to hold the number of seconds since the
 epoch, use krb5_timestamp instead.
 
 (cherry picked from commit ae25f6ec5558140a546db34fea389412d81c0631)
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/clients/klist/klist.c          |  2 +-
  src/include/k5-int.h               |  2 +-

@@ -3,6 +3,7 @@ From: Robbie Harwood <rharwood@redhat.com>
 Date: Fri, 22 Apr 2016 10:03:40 -0400
 Subject: [PATCH] krb5-1.11-kpasswdtest.patch
 
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/kadmin/testing/proto/krb5.conf.proto | 1 +
  1 file changed, 1 insertion(+)

@@ -6,12 +6,13 @@ Subject: [PATCH] Convert some pkiDebug messages to TRACE macros
 ticket: 8568 (new)
 (cherry picked from commit 9852862a83952a94300adfafa3e333f43396ec33)
 (cherry picked from commit 686fa6476eb759532d566794fa8d430774d44cf7)
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
- .../preauth/pkinit/pkinit_crypto_openssl.c    | 46 +++++--------
- src/plugins/preauth/pkinit/pkinit_identity.c  |  3 -
- src/plugins/preauth/pkinit/pkinit_matching.c  |  1 +
- src/plugins/preauth/pkinit/pkinit_srv.c       | 24 +++----
- src/plugins/preauth/pkinit/pkinit_trace.h     | 68 ++++++++++++++++++-
+ src/plugins/preauth/pkinit/pkinit_crypto_openssl.c | 46 ++++++---------
+ src/plugins/preauth/pkinit/pkinit_identity.c       |  3 -
+ src/plugins/preauth/pkinit/pkinit_matching.c       |  1 +
+ src/plugins/preauth/pkinit/pkinit_srv.c            | 24 ++++----
+ src/plugins/preauth/pkinit/pkinit_trace.h          | 68 +++++++++++++++++++++-
  5 files changed, 97 insertions(+), 45 deletions(-)
 
 diff --git a/src/plugins/preauth/pkinit/pkinit_crypto_openssl.c b/src/plugins/preauth/pkinit/pkinit_crypto_openssl.c

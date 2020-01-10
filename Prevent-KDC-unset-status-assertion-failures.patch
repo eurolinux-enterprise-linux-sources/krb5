@@ -28,6 +28,7 @@ target_version: 1.14-next
 tags: pullup
 
 (cherry picked from commit ffb35baac6981f9e8914f8f3bffd37f284b85970)
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/kdc/do_as_req.c  |  4 ++--
  src/kdc/do_tgs_req.c |  3 ++-

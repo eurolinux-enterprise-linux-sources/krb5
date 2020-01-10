@@ -9,6 +9,8 @@ with no certificate extensions.  Re-run make-certs.sh.
 ticket: 8562
 (cherry-picked from commit 0d23835660ab131d244d395e4568969b5c0dc678)
 [rharwood@redhat.com: only backport the make-certs.sh changes]
+
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/tests/dejagnu/pkinit-certs/make-certs.sh | 9 +++++++++
  1 file changed, 9 insertions(+)

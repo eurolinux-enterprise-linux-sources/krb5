@@ -10,6 +10,7 @@ required by t_pkinit.py.
 
 (cherry picked from commit b0473da67d72e43b9f03b703869069348e872efc)
 [rharwood@redhat.com: remove newer sections in make-certs.sh]
+Signed-off-by: Robbie Harwood <rharwood@redhat.com>
 ---
  src/tests/dejagnu/pkinit-certs/make-certs.sh | 19 +++++++++----------
  1 file changed, 9 insertions(+), 10 deletions(-)
